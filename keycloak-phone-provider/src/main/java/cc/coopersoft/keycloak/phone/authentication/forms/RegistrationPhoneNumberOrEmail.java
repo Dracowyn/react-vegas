@@ -1,8 +1,3 @@
-/*
-  add by zhangzhl
-  2020-07-27
-  注册页手机号码必填验证
- */
 package cc.coopersoft.keycloak.phone.authentication.forms;
 
 import cc.coopersoft.keycloak.phone.providers.constants.TokenCodeType;
@@ -30,6 +25,7 @@ import org.keycloak.services.messages.Messages;
 import org.keycloak.services.validation.Validation;
 
 import jakarta.ws.rs.core.MultivaluedMap;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +38,11 @@ public class RegistrationPhoneNumberOrEmail implements FormAction, FormActionFac
     public static final String MISSING_PHONE_NUMBER_OR_EMAIL = "requiredPhoneNumberOrEmail";
     public static final String PHONE_IN_USE = "phone_in_use";
     public static final String INVALID_SMS_CODE = "invalid_sms_code";
+
+    private static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
+            AuthenticationExecutionModel.Requirement.REQUIRED,
+            AuthenticationExecutionModel.Requirement.DISABLED
+    };
 
     @Override
     public String getHelpText() {
@@ -60,7 +61,6 @@ public class RegistrationPhoneNumberOrEmail implements FormAction, FormActionFac
 
     @Override
     public void close() {
-
     }
 
     @Override
@@ -78,11 +78,6 @@ public class RegistrationPhoneNumberOrEmail implements FormAction, FormActionFac
         return false;
     }
 
-    private static final AuthenticationExecutionModel.Requirement[] REQUIREMENT_CHOICES = {
-            AuthenticationExecutionModel.Requirement.REQUIRED,
-            AuthenticationExecutionModel.Requirement.DISABLED
-    };
-
     @Override
     public AuthenticationExecutionModel.Requirement[] getRequirementChoices() {
         return REQUIREMENT_CHOICES;
@@ -95,12 +90,10 @@ public class RegistrationPhoneNumberOrEmail implements FormAction, FormActionFac
 
     @Override
     public void init(Config.Scope config) {
-
     }
 
     @Override
     public void postInit(KeycloakSessionFactory factory) {
-
     }
 
     @Override
@@ -108,10 +101,6 @@ public class RegistrationPhoneNumberOrEmail implements FormAction, FormActionFac
         return PROVIDER_ID;
     }
 
-
-    /**
-     * FormAction
-     */
     private TokenCodeService getTokenCodeService(KeycloakSession session) {
         return session.getProvider(TokenCodeService.class);
     }
@@ -124,85 +113,20 @@ public class RegistrationPhoneNumberOrEmail implements FormAction, FormActionFac
         context.getEvent().detail(Details.REGISTER_METHOD, "form");
         String eventError = Errors.INVALID_REGISTRATION;
         KeycloakSession session = context.getSession();
-        PhoneNumber phoneNumber = new PhoneNumber(formData);
         String credentialType = formData.getFirst(PhoneConstants.FIELD_CREDENTIAL_TYPE);
 
-        logger.info("credentialType: " + credentialType);
-        if (credentialType != null && credentialType.equals(PhoneConstants.CREDENTIAL_TYPE_PHONE)) {
-            //使用手机号注册
-            formData.remove(PhoneConstants.FIELD_EMAIL);
-            context.getEvent().detail(PhoneConstants.FIELD_PHONE_NUMBER, phoneNumber.getFullPhoneNumber());
+        logger.debug("Credential type: " + credentialType);
 
-            if (UserUtils.isDuplicatePhoneAllowed() &&
-                    UserUtils.findUserByPhone(session.users(), context.getRealm(), phoneNumber) != null) {
-                formData.remove(PhoneConstants.FIELD_PHONE_NUMBER);
-                eventError = PHONE_IN_USE;
-                context.getEvent().detail(PhoneConstants.FIELD_PHONE_NUMBER, phoneNumber.getFullPhoneNumber());
-                errors.add(new FormMessage(PhoneConstants.FIELD_PHONE_NUMBER, PhoneConstants.PHONE_EXISTS));
-            } else {
-                //检查短信验证码
-                String verificationCode = formData.getFirst(PhoneConstants.FIELD_VERIFICATION_CODE);
-                TokenCodeRepresentation tokenCode = getTokenCodeService(session)
-                        .currentProcess(phoneNumber, TokenCodeType.REGISTRATION);
-                if (Validation.isBlank(verificationCode) || tokenCode == null ||
-                        !tokenCode.getCode().equals(verificationCode)) {
-                    context.error(INVALID_SMS_CODE);
-                    context.getEvent().detail(PhoneConstants.FIELD_PHONE_NUMBER, phoneNumber.getFullPhoneNumber());
-                    errors.add(new FormMessage(PhoneConstants.FIELD_VERIFICATION_CODE,
-                            PhoneConstants.SMS_CODE_MISMATCH));
-                }
-                if (tokenCode != null) {
-                    context.getSession().setAttribute(PhoneConstants.FIELD_TOKEN_ID, tokenCode.getId());
-                }
-            }
-        } else if (credentialType != null && credentialType.equals(PhoneConstants.CREDENTIAL_TYPE_EMAIL)) {
-            //使用邮箱注册，验证电子邮箱
-            formData.remove(PhoneConstants.FIELD_AREA_CODE);
-            formData.remove(PhoneConstants.FIELD_PHONE_NUMBER);
-            String email = formData.getFirst(Validation.FIELD_EMAIL);
-            boolean emailValid = true;
-            if (Validation.isBlank(email)) {
-                errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.MISSING_EMAIL));
-                emailValid = false;
-            } else if (!Validation.isEmailValid(email)) {
-                context.getEvent().detail(Details.EMAIL, email);
-                errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.INVALID_EMAIL));
-                emailValid = false;
-            }
-
-            if (emailValid && !context.getRealm().isDuplicateEmailsAllowed()) {
-                boolean duplicateEmail = false;
-                try {
-                    if (session.users().getUserByEmail(context.getRealm(), email) != null) {
-                        duplicateEmail = true;
-                    }
-                } catch (ModelDuplicateException e) {
-                    duplicateEmail = true;
-                }
-                if (duplicateEmail) {
-                    eventError = Errors.EMAIL_IN_USE;
-                    formData.remove(Validation.FIELD_EMAIL);
-                    context.getEvent().detail(Details.EMAIL, email);
-                    errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.EMAIL_EXISTS));
-                }
-            }
-            //验证密码
-            if (Validation.isBlank(formData.getFirst(RegistrationPage.FIELD_PASSWORD))) {
-                errors.add(new FormMessage(RegistrationPage.FIELD_PASSWORD, Messages.MISSING_PASSWORD));
-            } else if (!formData.getFirst(RegistrationPage.FIELD_PASSWORD).equals(formData.getFirst(RegistrationPage.FIELD_PASSWORD_CONFIRM))) {
-                errors.add(new FormMessage(RegistrationPage.FIELD_PASSWORD_CONFIRM, Messages.INVALID_PASSWORD_CONFIRM));
-            }
-            if (formData.getFirst(RegistrationPage.FIELD_PASSWORD) != null) {
-                PolicyError err = context.getSession().getProvider(PasswordPolicyManagerProvider.class).validate(context.getRealm().isRegistrationEmailAsUsername() ? formData.getFirst(RegistrationPage.FIELD_EMAIL) : formData.getFirst(RegistrationPage.FIELD_USERNAME), formData.getFirst(RegistrationPage.FIELD_PASSWORD));
-                if (err != null) {
-                    errors.add(new FormMessage(RegistrationPage.FIELD_PASSWORD, err.getMessage(), err.getParameters()));
-                }
-            }
+        if (PhoneConstants.CREDENTIAL_TYPE_PHONE.equals(credentialType)) {
+            validatePhoneRegistration(context, formData, errors, session, eventError);
+        } else if (PhoneConstants.CREDENTIAL_TYPE_EMAIL.equals(credentialType)) {
+            validateEmailRegistration(context, formData, errors, session, eventError);
         } else {
-            //缺少参数
+            // 缺少参数
             eventError = Errors.INVALID_INPUT;
             errors.add(new FormMessage(null, MISSING_PHONE_NUMBER_OR_EMAIL));
         }
+
         if (!errors.isEmpty()) {
             context.error(eventError);
             formData.remove(RegistrationPage.FIELD_PASSWORD);
@@ -213,34 +137,169 @@ public class RegistrationPhoneNumberOrEmail implements FormAction, FormActionFac
         }
     }
 
+    private void validatePhoneRegistration(ValidationContext context, MultivaluedMap<String, String> formData,
+                                           List<FormMessage> errors, KeycloakSession session, String eventError) {
+        // 使用手机号注册
+        formData.remove(PhoneConstants.FIELD_EMAIL);
+        PhoneNumber phoneNumber = new PhoneNumber(formData);
+        context.getEvent().detail(PhoneConstants.FIELD_PHONE_NUMBER, phoneNumber.getFullPhoneNumber());
+
+        // 验证手机号是否已被使用
+        if (UserUtils.isDuplicatePhoneAllowed() &&
+                UserUtils.findUserByPhone(session.users(), context.getRealm(), phoneNumber) != null) {
+            formData.remove(PhoneConstants.FIELD_PHONE_NUMBER);
+            context.getEvent().detail(PhoneConstants.FIELD_PHONE_NUMBER, phoneNumber.getFullPhoneNumber());
+            errors.add(new FormMessage(PhoneConstants.FIELD_PHONE_NUMBER, PhoneConstants.PHONE_EXISTS));
+            return;
+        }
+
+        // 验证短信验证码
+        validateSmsCode(context, formData, errors, session, phoneNumber);
+    }
+
+    private void validateSmsCode(ValidationContext context, MultivaluedMap<String, String> formData,
+                                 List<FormMessage> errors, KeycloakSession session, PhoneNumber phoneNumber) {
+        String verificationCode = formData.getFirst(PhoneConstants.FIELD_VERIFICATION_CODE);
+        TokenCodeRepresentation tokenCode = getTokenCodeService(session)
+                .currentProcess(phoneNumber, TokenCodeType.REGISTRATION);
+
+        if (Validation.isBlank(verificationCode) || tokenCode == null ||
+                !tokenCode.getCode().equals(verificationCode)) {
+            context.error(INVALID_SMS_CODE);
+            context.getEvent().detail(PhoneConstants.FIELD_PHONE_NUMBER, phoneNumber.getFullPhoneNumber());
+            errors.add(new FormMessage(PhoneConstants.FIELD_VERIFICATION_CODE, PhoneConstants.SMS_CODE_MISMATCH));
+        }
+
+        if (tokenCode != null) {
+            context.getSession().setAttribute(PhoneConstants.FIELD_TOKEN_ID, tokenCode.getId());
+        }
+    }
+
+    private void validateEmailRegistration(ValidationContext context, MultivaluedMap<String, String> formData,
+                                           List<FormMessage> errors, KeycloakSession session, String eventError) {
+        // 使用邮箱注册
+        formData.remove(PhoneConstants.FIELD_AREA_CODE);
+        formData.remove(PhoneConstants.FIELD_PHONE_NUMBER);
+
+        // 验证邮箱
+        validateEmail(context, formData, errors, session);
+
+        // 验证密码
+        validatePassword(context, formData, errors);
+    }
+
+    private void validateEmail(ValidationContext context, MultivaluedMap<String, String> formData,
+                               List<FormMessage> errors, KeycloakSession session) {
+        String email = formData.getFirst(Validation.FIELD_EMAIL);
+
+        // 验证邮箱格式
+        if (Validation.isBlank(email)) {
+            errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.MISSING_EMAIL));
+            return;
+        }
+
+        if (!Validation.isEmailValid(email)) {
+            context.getEvent().detail(Details.EMAIL, email);
+            errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.INVALID_EMAIL));
+            return;
+        }
+
+        // 验证邮箱是否重复
+        if (!context.getRealm().isDuplicateEmailsAllowed()) {
+            boolean duplicateEmail = false;
+            try {
+                if (session.users().getUserByEmail(context.getRealm(), email) != null) {
+                    duplicateEmail = true;
+                }
+            } catch (ModelDuplicateException e) {
+                duplicateEmail = true;
+            }
+
+            if (duplicateEmail) {
+                formData.remove(Validation.FIELD_EMAIL);
+                context.getEvent().detail(Details.EMAIL, email);
+                errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.EMAIL_EXISTS));
+            }
+        }
+    }
+
+    private void validatePassword(ValidationContext context, MultivaluedMap<String, String> formData,
+                                  List<FormMessage> errors) {
+        String password = formData.getFirst(RegistrationPage.FIELD_PASSWORD);
+        String passwordConfirm = formData.getFirst(RegistrationPage.FIELD_PASSWORD_CONFIRM);
+
+        if (Validation.isBlank(password)) {
+            errors.add(new FormMessage(RegistrationPage.FIELD_PASSWORD, Messages.MISSING_PASSWORD));
+        } else if (!password.equals(passwordConfirm)) {
+            errors.add(new FormMessage(RegistrationPage.FIELD_PASSWORD_CONFIRM, Messages.INVALID_PASSWORD_CONFIRM));
+        }
+
+        // 密码策略验证
+        if (password != null) {
+            String username = context.getRealm().isRegistrationEmailAsUsername() ?
+                    formData.getFirst(RegistrationPage.FIELD_EMAIL) :
+                    formData.getFirst(RegistrationPage.FIELD_USERNAME);
+
+            PolicyError err = context.getSession().getProvider(PasswordPolicyManagerProvider.class)
+                    .validate(username, password);
+
+            if (err != null) {
+                errors.add(new FormMessage(RegistrationPage.FIELD_PASSWORD, err.getMessage(), err.getParameters()));
+            }
+        }
+    }
+
     @Override
     public void success(FormContext context) {
         UserModel user = context.getUser();
         MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
         String credentialType = formData.getFirst(PhoneConstants.FIELD_CREDENTIAL_TYPE);
 
+        // 设置用户基本信息
+        setUserBasicInfo(user, formData);
+
+        if (PhoneConstants.CREDENTIAL_TYPE_PHONE.equals(credentialType)) {
+            handlePhoneRegistrationSuccess(context, user, formData);
+        } else {
+            handleEmailRegistrationSuccess(user, formData);
+        }
+    }
+
+    private void setUserBasicInfo(UserModel user, MultivaluedMap<String, String> formData) {
         if (formData.getFirst(RegistrationPage.FIELD_FIRST_NAME) != null) {
             user.setFirstName(formData.getFirst(RegistrationPage.FIELD_FIRST_NAME));
         }
         if (formData.getFirst(RegistrationPage.FIELD_LAST_NAME) != null) {
             user.setLastName(formData.getFirst(RegistrationPage.FIELD_LAST_NAME));
         }
+    }
 
-        if (credentialType != null && credentialType.equals(PhoneConstants.CREDENTIAL_TYPE_PHONE)) {
-            PhoneNumber phoneNumber = new PhoneNumber(formData);
-            String tokenId = context.getSession().getAttribute(PhoneConstants.FIELD_TOKEN_ID, String.class);
+    private void handlePhoneRegistrationSuccess(FormContext context, UserModel user,
+                                                MultivaluedMap<String, String> formData) {
+        PhoneNumber phoneNumber = new PhoneNumber(formData);
+        String tokenId = context.getSession().getAttribute(PhoneConstants.FIELD_TOKEN_ID, String.class);
 
-            logger.info(String.format("registration user %s phone success, tokenId is: %s", user.getId(), tokenId));
-            getTokenCodeService(context.getSession()).tokenValidated(user, phoneNumber, tokenId);
-        } else {
-            logger.info(String.format("registration user %s by email success.", user.getId()));
-            user.setEmail(formData.getFirst(RegistrationPage.FIELD_EMAIL));
+        // 设置电子邮箱（如果有）
+        String email = formData.getFirst(RegistrationPage.FIELD_EMAIL);
+        if (email != null) {
+            user.setEmail(email);
+            user.setEmailVerified(false);
+        }
 
-            try {
-                user.credentialManager().updateCredential(UserCredentialModel.password(formData.getFirst("password"), false));
-            } catch (Exception me) {
-                user.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
-            }
+        logger.info("Registration user " + tokenId + " phone success");
+        getTokenCodeService(context.getSession()).tokenValidated(user, phoneNumber, tokenId);
+    }
+
+    private void handleEmailRegistrationSuccess(UserModel user, MultivaluedMap<String, String> formData) {
+        logger.info("Registration user " + user.getUsername() + " by email success");
+        user.setEmail(formData.getFirst(RegistrationPage.FIELD_EMAIL));
+
+        try {
+            user.credentialManager().updateCredential(
+                    UserCredentialModel.password(formData.getFirst("password"), false));
+        } catch (Exception me) {
+            logger.warn("Failed to set password for user " + user.getUsername() + ", requiring password update action");
+            user.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
         }
     }
 
@@ -262,6 +321,5 @@ public class RegistrationPhoneNumberOrEmail implements FormAction, FormActionFac
 
     @Override
     public void setRequiredActions(KeycloakSession session, RealmModel realm, UserModel user) {
-
     }
 }
