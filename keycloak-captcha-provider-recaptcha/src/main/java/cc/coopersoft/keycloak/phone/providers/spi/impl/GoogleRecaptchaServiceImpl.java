@@ -1,6 +1,7 @@
 package cc.coopersoft.keycloak.phone.providers.spi.impl;
 
 import cc.coopersoft.keycloak.phone.providers.spi.CaptchaService;
+import lombok.Setter;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -25,6 +26,7 @@ public class GoogleRecaptchaServiceImpl implements CaptchaService {
     public static final String G_RECAPTCHA_RESPONSE = "g-recaptcha-response";
 
     private final KeycloakSession session;
+    @Setter
     private Config.Scope config;
 
     public GoogleRecaptchaServiceImpl(KeycloakSession session) {
@@ -49,12 +51,12 @@ public class GoogleRecaptchaServiceImpl implements CaptchaService {
         boolean success = false;
         CloseableHttpClient httpClient = session.getProvider(HttpClientProvider.class).getHttpClient();
         HttpPost post = new HttpPost("https://www.recaptcha.net/recaptcha/api/siteverify");
-        List<NameValuePair> formparams = new LinkedList<>();
-        formparams.add(new BasicNameValuePair("secret", config.get("secret")));
-        formparams.add(new BasicNameValuePair("response", formParams.getFirst(G_RECAPTCHA_RESPONSE)));
-        formparams.add(new BasicNameValuePair("remoteip", session.getContext().getConnection().getRemoteAddr()));
+        List<NameValuePair> listFormParams = new LinkedList<>();
+        listFormParams.add(new BasicNameValuePair("secret", config.get("secret")));
+        listFormParams.add(new BasicNameValuePair("response", formParams.getFirst(G_RECAPTCHA_RESPONSE)));
+        listFormParams.add(new BasicNameValuePair("remoteip", session.getContext().getConnection().getRemoteAddr()));
         try {
-            UrlEncodedFormEntity form = new UrlEncodedFormEntity(formparams, "UTF-8");
+            UrlEncodedFormEntity form = new UrlEncodedFormEntity(listFormParams, "UTF-8");
             post.setEntity(form);
             try (CloseableHttpResponse response = httpClient.execute(post)) {
                 InputStream content = response.getEntity().getContent();
@@ -80,10 +82,6 @@ public class GoogleRecaptchaServiceImpl implements CaptchaService {
     @Override
     public String getFrontendKey(String user) {
         return "";
-    }
-
-    public void setConfig(Config.Scope config) {
-        this.config = config;
     }
 
     @Override
