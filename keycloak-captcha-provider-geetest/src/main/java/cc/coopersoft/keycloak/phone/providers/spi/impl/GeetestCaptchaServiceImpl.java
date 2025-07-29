@@ -164,7 +164,9 @@ public class GeetestCaptchaServiceImpl implements CaptchaService {
             // 构建请求体
             StringBuilder postData = new StringBuilder();
             for (Map.Entry<String, String> param : queryParams.entrySet()) {
-                if (!postData.isEmpty()) postData.append('&');
+                if (!postData.isEmpty()) {
+                    postData.append('&');
+                }
                 postData.append(URLEncoder.encode(param.getKey(), StandardCharsets.UTF_8));
                 postData.append('=');
                 postData.append(URLEncoder.encode(param.getValue(), StandardCharsets.UTF_8));
