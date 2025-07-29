@@ -4,9 +4,9 @@ import lombok.Getter;
 
 /**
  * TokenCode类型枚举
+ *
  * @author hyperquantum
  */
-@Getter
 public enum TokenCodeType {
     /**
      * 验证码
@@ -29,9 +29,10 @@ public enum TokenCodeType {
      */
     LOGIN("login");
 
+    @Getter
     private final String label;
 
     TokenCodeType(String label) {
-        this.label  = label;
+        this.label = label;
     }
 }

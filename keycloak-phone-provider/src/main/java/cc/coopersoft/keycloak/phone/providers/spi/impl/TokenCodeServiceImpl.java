@@ -11,8 +11,8 @@ import cc.coopersoft.keycloak.phone.providers.representations.TokenCodeRepresent
 import cc.coopersoft.keycloak.phone.providers.spi.TokenCodeService;
 import cc.coopersoft.keycloak.phone.utils.PhoneNumber;
 import cc.coopersoft.keycloak.phone.utils.UserUtils;
-import jakarta.validation.constraints.NotNull;
 import org.jboss.logging.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.CredentialProvider;
@@ -25,6 +25,7 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.TemporalType;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
+
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;

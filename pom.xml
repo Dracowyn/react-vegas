@@ -13,7 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <version.keycloak>23.0.7</version.keycloak>
+        <version.keycloak>25.0.6</version.keycloak>
         <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
         <maven.dependency.plugin.version>3.6.1</maven.dependency.plugin.version>
         <maven.assembly.plugin.version>3.6.0</maven.assembly.plugin.version>
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.26</version>
+            <version>1.18.38</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

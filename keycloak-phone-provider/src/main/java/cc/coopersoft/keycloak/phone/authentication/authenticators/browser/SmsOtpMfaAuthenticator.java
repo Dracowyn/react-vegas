@@ -7,14 +7,13 @@ import cc.coopersoft.keycloak.phone.providers.constants.TokenCodeType;
 import cc.coopersoft.keycloak.phone.providers.spi.PhoneMessageService;
 import cc.coopersoft.keycloak.phone.utils.PhoneConstants;
 import cc.coopersoft.keycloak.phone.utils.PhoneNumber;
-import org.jboss.resteasy.spi.HttpResponse;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.Authenticator;
 import org.keycloak.authentication.CredentialValidator;
-import org.keycloak.common.util.ServerCookie;
 import org.keycloak.credential.CredentialProvider;
 import org.keycloak.models.*;
+import org.keycloak.http.HttpResponse;
 
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Cookie;
@@ -64,17 +63,40 @@ public class SmsOtpMfaAuthenticator implements Authenticator, CredentialValidato
 
         addCookie(context, "SMS_OTP_ANSWERED", "true",
                 uri.getRawPath(),
-                null, null,
+                null,
                 maxCookieAge,
                 false, true);
     }
 
-    public void addCookie(AuthenticationFlowContext context, String name, String value, String path, String domain, String comment, int maxAge, boolean secure, boolean httpOnly) {
-        HttpResponse response = context.getSession().getContext().getContextObject(HttpResponse.class);
+    public void addCookie(AuthenticationFlowContext context, String name, String value, String path, String domain, int maxAge, boolean secure, boolean httpOnly) {
+        HttpResponse response = context.getSession().getContext().getHttpResponse();
+
+        // 构建cookie字符串
         StringBuilder cookieBuilder = new StringBuilder();
-        ServerCookie.appendCookieValue(cookieBuilder, 1, name, value, path, domain, comment, maxAge, secure, httpOnly, null);
+        cookieBuilder.append(name).append("=").append(value);
+
+        if (path != null) {
+            cookieBuilder.append("; Path=").append(path);
+        }
+
+        if (domain != null) {
+            cookieBuilder.append("; Domain=").append(domain);
+        }
+
+        if (maxAge >= 0) {
+            cookieBuilder.append("; Max-Age=").append(maxAge);
+        }
+
+        if (secure) {
+            cookieBuilder.append("; Secure");
+        }
+
+        if (httpOnly) {
+            cookieBuilder.append("; HttpOnly");
+        }
+
         String cookie = cookieBuilder.toString();
-        response.getOutputHeaders().add(HttpHeaders.SET_COOKIE, cookie);
+        response.setHeader(HttpHeaders.SET_COOKIE, cookie);
     }
 
     @Override

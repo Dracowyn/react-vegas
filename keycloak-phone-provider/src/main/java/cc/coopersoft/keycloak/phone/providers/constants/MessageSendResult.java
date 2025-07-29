@@ -5,27 +5,31 @@ import lombok.Getter;
 import java.time.Instant;
 import java.util.Date;
 
-@Getter
 public class MessageSendResult {
     /**
      * 短信发送结果的状态
      */
+    @Getter
     private final int status;
     /**
      * 错误代码
      */
+    @Getter
     private String errorCode;
     /**
      * 错误信息
      */
+    @Getter
     private String errorMessage;
     /**
      * 是否可以重发短信的截止时间
      */
+    @Getter
     private Date resendExpires;
     /**
      * 短信的过期时间
      */
+    @Getter
     private Date expires;
 
     /**

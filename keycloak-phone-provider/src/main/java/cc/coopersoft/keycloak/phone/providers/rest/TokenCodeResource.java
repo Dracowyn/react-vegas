@@ -12,7 +12,6 @@ import cc.coopersoft.keycloak.phone.utils.UserUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jboss.logging.Logger;
-import org.jboss.resteasy.annotations.cache.NoCache;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
@@ -23,6 +22,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.CacheControl;
+
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
@@ -79,11 +80,12 @@ public class TokenCodeResource {
      * @return 响应
      */
     @POST
-    @NoCache
     @Path("")
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_JSON)
     public Response sendTokenCodeJson(String reqBody) {
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(true);
         try {
             JsonNode jsonObject = new ObjectMapper().readTree(reqBody);
             MultivaluedHashMap<String, String> formData = new MultivaluedHashMap<>();
@@ -95,7 +97,7 @@ public class TokenCodeResource {
         } catch (IOException e) {
             logger.error(e.getMessage());
         }
-        return Response.serverError().build();
+        return Response.serverError().cacheControl(cacheControl).build();
     }
 
     /**
@@ -105,19 +107,20 @@ public class TokenCodeResource {
      * @return 响应
      */
     @POST
-    @NoCache
     @Path("")
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_FORM_URLENCODED)
     public Response sendTokenCode(MultivaluedMap<String, String> formData) {
         PhoneNumber phoneNumber = new PhoneNumber(formData);
         HashMap<String, Object> retData = new HashMap<>();
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(true);
 
         if (phoneNumber.isEmpty()) {
             retData.put("status", 0);
             retData.put("error", "Must inform a cellphone number.");
             retData.put("errormsg", "phoneNumberCannotBeEmpty");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).build();
+            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
 
         // 验证码
@@ -126,7 +129,7 @@ public class TokenCodeResource {
             retData.put("status", -1);
             retData.put("error", "Captcha not completed.");
             retData.put("errormsg", "captchaNotCompleted");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).build();
+            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
 
         // 区号
@@ -135,7 +138,7 @@ public class TokenCodeResource {
             retData.put("status", -2);
             retData.put("error", "This area is not supported");
             retData.put("errormsg", "areaNotSupported");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).build();
+            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
 
         if (tokenCodeType != TokenCodeType.REGISTRATION && tokenCodeType != TokenCodeType.VERIFY) {
@@ -145,11 +148,11 @@ public class TokenCodeResource {
                 retData.put("status", 0);
                 retData.put("error", "This user not exists");
                 retData.put("errormsg", "userNotExists");
-                return Response.ok(retData, APPLICATION_JSON_TYPE).build();
+                return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
             }
         }
 
-        logger.info(String.format("Requested %s code to %s", tokenCodeType.getLabel(), phoneNumber.getFullPhoneNumber()));
+        logger.info(String.format("Requested %s code to %s", tokenCodeType.name(), phoneNumber.getFullPhoneNumber()));
         MessageSendResult result = session.getProvider(PhoneMessageService.class).sendTokenCode(phoneNumber, tokenCodeType);
 
         if (result.ok()) {
@@ -158,11 +161,11 @@ public class TokenCodeResource {
             retData.put("resend_expires", result.getResendExpiresTime());
         } else {
             // 不知道为什么这里当时为什么要写成固定的 @Author Dracowyn
-            retData.put("status", result.getStatus());
-            retData.put("error", result.getErrorCode());
+            retData.put("status", result.ok() ? 1 : 0);
+            retData.put("error", result.getErrorMessage());
             retData.put("errormsg", result.getErrorMessage());
         }
-        return Response.ok(retData, APPLICATION_JSON_TYPE).build();
+        return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
     }
 
     /**
@@ -172,11 +175,12 @@ public class TokenCodeResource {
      * @return 响应
      */
     @POST
-    @NoCache
     @Path("/resend-expires")
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_JSON)
     public Response getResendExpireJson(String reqBody) {
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(true);
         try {
             JsonNode jsonObject = new ObjectMapper().readTree(reqBody);
             return this.getResendExpire(jsonObject.get(PhoneConstants.FIELD_AREA_CODE).asText(),
@@ -184,7 +188,7 @@ public class TokenCodeResource {
         } catch (IOException e) {
             logger.error(e);
         }
-        return Response.serverError().build();
+        return Response.serverError().cacheControl(cacheControl).build();
     }
 
     /**
@@ -195,7 +199,6 @@ public class TokenCodeResource {
      * @return 响应
      */
     @POST
-    @NoCache
     @Path("/resend-expires")
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_FORM_URLENCODED)
@@ -212,18 +215,19 @@ public class TokenCodeResource {
      * @return 响应
      */
     @GET
-    @NoCache
     @Path("/resend-expires")
     @Produces(APPLICATION_JSON)
     public Response getResendExpire(@QueryParam(PhoneConstants.FIELD_AREA_CODE) String areaCode,
                                     @QueryParam(PhoneConstants.FIELD_PHONE_NUMBER) String phoneNumberStr) {
         HashMap<String, Object> retData = new HashMap<>();
-        PhoneNumber phoneNumber = new PhoneNumber(areaCode, phoneNumberStr);
+        PhoneNumber phoneNumber = new PhoneNumber(areaCode + phoneNumberStr);
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(true);
         if (phoneNumber.isEmpty()) {
             retData.put("status", 0);
             retData.put("error", "Must inform a phone number.");
             retData.put("errormsg", "phoneNumberCannotBeEmpty");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).build();
+            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
 
         TokenCodeService tokenCodeService = session.getProvider(TokenCodeService.class);
@@ -233,12 +237,12 @@ public class TokenCodeResource {
 
             retData.put("status", 1);
             retData.put("resend_expire", resendExpire);
-            return Response.ok(retData, APPLICATION_JSON_TYPE).build();
+            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         } catch (BadRequestException e) {
             retData.put("status", 0);
             retData.put("error", e.getMessage());
             retData.put("errormsg", "serverError");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).build();
+            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
     }
 

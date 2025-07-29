@@ -6,8 +6,8 @@ import cc.coopersoft.keycloak.phone.utils.PhoneConstants;
 import cc.coopersoft.keycloak.phone.utils.PhoneNumber;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.core.CacheControl;
 import org.jboss.logging.Logger;
-import org.jboss.resteasy.annotations.cache.NoCache;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.managers.AppAuthManager;
@@ -15,6 +15,7 @@ import org.keycloak.services.managers.AuthenticationManager.AuthResult;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
+
 import java.io.IOException;
 import java.util.HashMap;
 
@@ -39,11 +40,12 @@ public class VerificationCodeResource {
     }
 
     @POST
-    @NoCache
     @Path("")
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_JSON)
     public Response setUserPhoneNumberJson(String reqBody) {
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(true);
         try {
             JsonNode jsonObject = new ObjectMapper().readTree(reqBody);
 
@@ -53,11 +55,10 @@ public class VerificationCodeResource {
         } catch (IOException e) {
             logger.error(e.getMessage());
         }
-        return Response.serverError().build();
+        return Response.serverError().cacheControl(cacheControl).build();
     }
 
     @POST
-    @NoCache
     @Path("")
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_FORM_URLENCODED)
@@ -68,44 +69,47 @@ public class VerificationCodeResource {
         HashMap<String, Object> response = new HashMap<>();
 
         PhoneNumber phoneNumber = new PhoneNumber(areaCode, phoneNumberStr);
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(true);
         if (auth == null) {
             response.put("status", -1);
             response.put("error", "Please login.");
             response.put("errormsg", "needAuth");
-            return Response.ok(response, APPLICATION_JSON_TYPE).build();
+            return Response.ok(response, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
         if (phoneNumber.isEmpty()) {
             response.put("status", 0);
             response.put("error", "Must inform a phone number");
             response.put("errormsg", "phoneNumberCannotBeEmpty");
-            return Response.ok(response, APPLICATION_JSON_TYPE).build();
+            return Response.ok(response, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
         if (code == null) {
             response.put("status", 0);
             response.put("error", "Token code cannot be empty");
             response.put("errormsg", "smsCodeCannotBeEmpty");
-            return Response.ok(response, APPLICATION_JSON_TYPE).build();
+            return Response.ok(response, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
 
         UserModel user = auth.getUser();
         getTokenCodeService().setUserPhoneNumberByCode(user, phoneNumber, code);
 
-        return Response.ok().entity(ENTITY_SUCCESS).build();
+        return Response.ok().entity(ENTITY_SUCCESS).cacheControl(cacheControl).build();
     }
 
     @POST
-    @NoCache
     @Path("/unset")
     @Produces(APPLICATION_JSON)
     @Consumes({APPLICATION_JSON, APPLICATION_FORM_URLENCODED})
     public Response unsetUserPhoneNumber() {
         HashMap<String, Object> response = new HashMap<>();
         ConfigService config = session.getProvider(ConfigService.class);
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(true);
         if (!config.isAllowUnset()) {
             response.put("status", -3);
             response.put("error", "Not allowed to unset phone number");
             response.put("errormsg", "unsetPhoneNumberNotAllowed");
-            return Response.ok(response, APPLICATION_JSON_TYPE).build();
+            return Response.ok(response, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
         try {
             if (auth == null) {
@@ -117,16 +121,16 @@ public class VerificationCodeResource {
                 response.put("status", -2);
                 response.put("error", "Email Unverified.");
                 response.put("errormsg", "needVerifiedEmail");
-                return Response.ok(response, APPLICATION_JSON_TYPE).build();
+                return Response.ok(response, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
             } else {
                 user.removeAttribute("phoneNumber");
-                return Response.ok().entity(ENTITY_SUCCESS).build();
+                return Response.ok().entity(ENTITY_SUCCESS).cacheControl(cacheControl).build();
             }
         } catch (BadRequestException | NotAuthorizedException e) {
             response.put("status", -1);
             response.put("error", e.getMessage());
             response.put("errormsg", "needAuth");
-            return Response.ok(response, APPLICATION_JSON_TYPE).build();
+            return Response.ok(response, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
         }
     }
 }

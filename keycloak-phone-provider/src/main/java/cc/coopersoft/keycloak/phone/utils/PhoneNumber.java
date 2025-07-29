@@ -1,23 +1,27 @@
 package cc.coopersoft.keycloak.phone.utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 import org.keycloak.services.validation.Validation;
 
 import jakarta.ws.rs.core.MultivaluedMap;
 import java.util.Optional;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
 public class PhoneNumber {
-    public String areaCode;
-    public String phoneNumber;
+    @Getter
+    private String areaCode;
+    @Getter
+    @Setter
+    private String phoneNumber;
 
     public PhoneNumber(String fullPhoneNumber) {
         this.setFullPhoneNumber(fullPhoneNumber);
+    }
+
+    public PhoneNumber(String areaCode, String phoneNumber) {
+        this.areaCode = areaCode;
+        this.phoneNumber = phoneNumber;
     }
 
     public PhoneNumber(MultivaluedMap<String, String> formData) {

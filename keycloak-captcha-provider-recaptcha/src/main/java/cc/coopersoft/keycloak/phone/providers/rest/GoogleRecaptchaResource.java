@@ -3,8 +3,8 @@ package cc.coopersoft.keycloak.phone.providers.rest;
 import cc.coopersoft.keycloak.phone.providers.spi.CaptchaService;
 import cc.coopersoft.keycloak.phone.utils.RegexUtils;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.CacheControl;
 import org.jboss.logging.Logger;
-import org.jboss.resteasy.annotations.cache.NoCache;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.managers.AppAuthManager;
@@ -12,6 +12,7 @@ import org.keycloak.services.managers.AuthenticationManager;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
 import java.util.Set;
 
 public class GoogleRecaptchaResource {
@@ -52,17 +53,18 @@ public class GoogleRecaptchaResource {
 
     @GET
     @Path("code")
-    @NoCache
     @Produces(MediaType.APPLICATION_JSON)
     public Response getVerificationCodes(@HeaderParam("Access-Control-Request-Method") final String requestMethod,
                                          @HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
                                          @HeaderParam("Origin") final String origin) {
         CaptchaService captcha = this.session.getProvider(CaptchaService.class);
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(true);
 
         String geetestCode = captcha.getFrontendKey(this.auth);
         Response.ResponseBuilder response = Response.status(Response.Status.OK);
         this.setCrosHeader(response, requestMethod, requestHeaders, origin);
-        return Response.status(Response.Status.OK).entity(geetestCode).build();
+        return Response.status(Response.Status.OK).entity(geetestCode).cacheControl(cacheControl).build();
     }
 
     @OPTIONS
