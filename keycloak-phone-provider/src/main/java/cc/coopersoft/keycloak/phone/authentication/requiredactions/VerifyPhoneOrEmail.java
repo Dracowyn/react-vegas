@@ -34,7 +34,8 @@ public class VerifyPhoneOrEmail extends VerifyEmail implements RequiredActionPro
 
     @Override
     public void evaluateTriggers(RequiredActionContext context) {
-        if (!context.getUser().isEmailVerified() && isUserPhoneNumberVerified(context.getUser())) {
+        // 只有当用户邮箱未验证且手机号也未验证时，才需要验证手机或邮箱
+        if (!context.getUser().isEmailVerified() && !isUserPhoneNumberVerified(context.getUser())) {
             context.getUser().addRequiredAction(PROVIDER_ID);
             logger.debug("User is required to verify phone or email");
         }
