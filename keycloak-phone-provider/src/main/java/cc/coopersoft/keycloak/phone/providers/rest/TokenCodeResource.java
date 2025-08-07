@@ -17,6 +17,8 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
+import org.keycloak.events.EventBuilder;
+import org.keycloak.events.EventType;
 
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MultivaluedHashMap;
@@ -153,13 +155,45 @@ public class TokenCodeResource {
         }
 
         logger.info(String.format("Requested %s code to %s", tokenCodeType.name(), phoneNumber.getFullPhoneNumber()));
+
+        // 创建事件构建器来记录短信发送事件
+        EventBuilder eventBuilder = new EventBuilder(session.getContext().getRealm(), session, session.getContext().getConnection())
+                .event(EventType.CUSTOM_REQUIRED_ACTION)
+                .detail("phone_number", phoneNumber.getFullPhoneNumber())
+                .detail("token_code_type", tokenCodeType.name())
+                .detail("area_code", phoneNumber.getAreaCode())
+                .detail("phone_number", phoneNumber.getPhoneNumber());
+
+        // 如果有已认证的用户，记录用户信息
+        if (auth != null && auth.getUser() != null) {
+            eventBuilder.user(auth.getUser());
+        } else {
+            // 对于注册和验证类型，尝试根据手机号查找用户
+            UserModel user = UserUtils.findUserByPhone(session.users(), session.getContext().getRealm(), phoneNumber);
+            if (user != null) {
+                eventBuilder.user(user);
+            }
+        }
+
         MessageSendResult result = session.getProvider(PhoneMessageService.class).sendTokenCode(phoneNumber, tokenCodeType);
 
         if (result.ok()) {
+            // 记录成功事件
+            eventBuilder.detail("result", "success")
+                    .detail("expires_in", String.valueOf(result.getExpiresTime()))
+                    .detail("resend_expires", String.valueOf(result.getResendExpiresTime()))
+                    .success();
+
             retData.put("status", 1);
             retData.put("expires_in", result.getExpiresTime());
             retData.put("resend_expires", result.getResendExpiresTime());
         } else {
+            // 记录失败事件
+            eventBuilder.detail("result", "failure")
+                    .detail("error_code", result.getErrorCode())
+                    .detail("error_message", result.getErrorMessage())
+                    .error("SMS_SEND_FAILED");
+
             // 不知道为什么这里当时为什么要写成固定的 @Author Dracowyn
             retData.put("status", result.ok() ? 1 : 0);
             retData.put("error", result.getErrorMessage());
