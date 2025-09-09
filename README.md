@@ -40,7 +40,7 @@ pnpm add react-vegas
 ## 基础用法
 
 ```tsx
-import {Vegas} from "react-vegas";
+import { Vegas } from "react-vegas";
 
 const App = () => {
 	const slides = [
@@ -97,12 +97,12 @@ const slides = [
 	timer={false}                             // 隐藏进度条
 	delay={7000}                              // 全局停留时间
 	shuffle={true}                            // 随机播放
-    preload={true}                            // 启用预加载
-    preloadImage={true}                       // 启用预加载图片
+	preload={true}                            // 启用预加载
+	preloadImage={true}                       // 启用预加载图片
 	transitionDuration={3000}                 // 全局过渡时长
 	firstTransitionDuration={5000}            // 初始过渡时长
 	defaultBackground="/images/loading.jpg"   // 加载背景图
-	defaultBackgroundDelay={2000}             // 加载背景显示时间
+	defaultBackgroundDuration={2000}          // 加载背景显示时间
 	debug={false}                             // 调试模式
 	color="#000"                              // 背景色
 />
@@ -115,10 +115,12 @@ const slides = [
 | 属性       | 类型      | 默认值   | 说明          |
 |----------|---------|-------|-------------|
 | slides   | Array   | 必填    | 幻灯片对象数组     |
+| slide    | number  | 0     | 初始幻灯片索引     |
 | delay    | number  | 5000  | 幻灯片切换间隔(毫秒) |
 | autoplay | boolean | true  | 启用自动播放      |
 | loop     | boolean | true  | 循环播放        |
 | shuffle  | boolean | false | 随机播放顺序      |
+| debug    | boolean | false | 启用调试日志      |
 
 ### 过渡效果
 
@@ -130,22 +132,26 @@ const slides = [
 
 ### 视觉属性
 
-| 属性      | 类型      | 默认值   | 说明     |
-|---------|---------|-------|--------|
-| overlay | boolean | false | 显示遮罩层  |
-| timer   | boolean | true  | 显示进度条  |
-| color   | string  | null  | 背景颜色   |
-| cover   | boolean | true  | 图片覆盖模式 |
+| 属性      | 类型      | 默认值    | 说明     |
+|---------|---------|--------|--------|
+| overlay | boolean | false  | 显示遮罩层  |
+| timer   | boolean | false  | 显示进度条  |
+| color   | string  | null   | 背景颜色   |
+| cover   | boolean | true   | 图片覆盖模式 |
+| align   | string  | center | 水平对齐方式 |
+| valign  | string  | center | 垂直对齐方式 |
 
 ### 加载配置
 
-| 属性                     | 类型      | 默认值       | 说明       |
-|------------------------|---------|-----------|----------|
-| preload                | boolean | false     | 启用资源预加载  |
-| preloadImage           | boolean | false     | 预加载图片    |
-| preloadVideo           | boolean | false     | 预加载视频    |
-| defaultBackground      | string  | undefined | 加载背景图    |
-| defaultBackgroundDelay | number  | 2000      | 加载背景显示时长 |
+| 属性                        | 类型      | 默认值       | 说明        |
+|---------------------------|---------|-----------|-----------|
+| preload                   | boolean | false     | 启用资源预加载   |
+| preloadImage              | boolean | false     | 预加载图片     |
+| preloadImageBatch         | number  | 3         | 批量预加载图片数量 |
+| preloadVideo              | boolean | false     | 预加载视频     |
+| showLoading               | boolean | false     | 显示加载指示器   |
+| defaultBackground         | string  | undefined | 加载背景图     |
+| defaultBackgroundDuration | number  | 3000      | 加载背景显示时长  |
 
 ### 回调函数
 

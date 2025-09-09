@@ -1,7 +1,27 @@
 # React Vegas Slideshow
 
 A React implementation of the [Vegas Background SlideShow](https://github.com/jaysalvat/vegas), providing a powerful and
-flexible slideshow component that supports images and videos with smooth transitions and customizable effects.
+flexible slide
+
+```typescript
+interface Slide {
+	src: string;                       // Resource path
+	color?: string;                    // Background color
+	delay?: number;                    // Individual slide delay
+	align?: 'left' | 'center' | 'right';  // Horizontal alignment
+	valign?: 'top' | 'center' | 'bottom'; // Vertical alignment
+	transition?: string;               // Individual transition
+	transitionDuration?: number;       // Individual transition duration
+	cover?: boolean;                  // Cover mode
+	video?: {                        // Video specific options
+		src: string[];               // Multiple format sources
+		muted?: boolean;               // Mute video
+		loop?: boolean;                // Loop video
+	};
+}
+
+```
+at supports images and videos with smooth transitions and customizable effects.
 
 English | [简体中文](./README.md)
 
@@ -22,8 +42,11 @@ English | [简体中文](./README.md)
 
 npm
 
-```bash
-npm install react-vegas
+```
+bash
+npm
+install
+react - vegas
 ```
 
 yarn
@@ -41,7 +64,7 @@ pnpm add react-vegas
 ## Basic Usage
 
 ```tsx
-import {Vegas} from "react-vegas";
+import { Vegas } from "react-vegas";
 
 const App = () => {
 	const slides = [
@@ -100,7 +123,7 @@ const slides = [
 	transitionDuration={3000}
 	firstTransitionDuration={5000}
 	defaultBackground="/images/loading.jpg"
-	defaultBackgroundDelay={2000}
+	defaultBackgroundDuration={2000}
 	debug={true}
 	color="#000"
 />
@@ -113,10 +136,12 @@ const slides = [
 | Prop     | Type    | Default  | Description               |
 |----------|---------|----------|---------------------------|
 | slides   | Array   | Required | Array of slide objects    |
+| slide    | number  | 0        | Initial slide index       |
 | delay    | number  | 5000     | Delay between slides (ms) |
 | autoplay | boolean | true     | Enable automatic playback |
 | loop     | boolean | true     | Enable continuous loop    |
 | shuffle  | boolean | false    | Randomize slide order     |
+| debug    | boolean | false    | Enable debug logging      |
 
 ### Transition Props
 
@@ -131,19 +156,23 @@ const slides = [
 | Prop    | Type    | Default | Description           |
 |---------|---------|---------|-----------------------|
 | overlay | boolean | false   | Show overlay layer    |
-| timer   | boolean | true    | Show progress timer   |
+| timer   | boolean | false   | Show progress timer   |
 | color   | string  | null    | Background color      |
 | cover   | boolean | true    | Cover mode for images |
+| align   | string  | center  | Horizontal alignment  |
+| valign  | string  | center  | Vertical alignment    |
 
 ### Loading Props
 
-| Prop                   | Type    | Default   | Description                 |
-|------------------------|---------|-----------|-----------------------------|
-| preload                | boolean | false     | Enable resource preloading  |
-| preloadImage           | boolean | false     | Preload images              |
-| preloadVideo           | boolean | false     | Preload videos              |
-| defaultBackground      | string  | undefined | Loading background image    |
-| defaultBackgroundDelay | number  | 2000      | Loading background duration |
+| Prop                      | Type    | Default   | Description                 |
+|---------------------------|---------|-----------|-----------------------------|
+| preload                   | boolean | false     | Enable resource preloading  |
+| preloadImage              | boolean | false     | Preload images              |
+| preloadImageBatch         | number  | 3         | Batch preload image count   |
+| preloadVideo              | boolean | false     | Preload videos              |
+| showLoading               | boolean | false     | Show loading indicator      |
+| defaultBackground         | string  | undefined | Loading background image    |
+| defaultBackgroundDuration | number  | 3000      | Loading background duration |
 
 ### Callback Props
 
