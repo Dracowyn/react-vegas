@@ -50,20 +50,36 @@ public class GeetestResource {
         }
     }
 
+    private Response handleVerificationCodesRequest(final String requestMethod,
+                                                    final String requestHeaders,
+                                                    final String origin) {
+        CaptchaService captcha = this.session.getProvider(CaptchaService.class);
+        CacheControl cacheControl = new CacheControl();
+        cacheControl.setNoCache(false);
+
+        String geetestCode = captcha.getFrontendKey(this.auth);
+        Response.ResponseBuilder response = Response.status(Response.Status.OK);
+        this.setCrosHeader(response, requestMethod, requestHeaders, origin);
+        return response.entity(geetestCode).cacheControl(cacheControl).build();
+    }
+
     @GET
     @Path("code")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getVerificationCodes(@HeaderParam("Access-Control-Request-Method") final String requestMethod,
                                          @HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
                                          @HeaderParam("Origin") final String origin) {
-        CaptchaService captcha = this.session.getProvider(CaptchaService.class);
-        CacheControl cacheControl = new CacheControl();
-        cacheControl.setNoCache(true);
+        return handleVerificationCodesRequest(requestMethod, requestHeaders, origin);
+    }
 
-        String geetestCode = captcha.getFrontendKey(this.auth);
-        Response.ResponseBuilder response = Response.status(Response.Status.OK);
-        this.setCrosHeader(response, requestMethod, requestHeaders, origin);
-        return Response.status(Response.Status.OK).entity(geetestCode).cacheControl(cacheControl).build();
+    @POST
+
+    @Path("code")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response postVerificationCodes(@HeaderParam("Access-Control-Request-Method") final String requestMethod,
+                                          @HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
+                                          @HeaderParam("Origin") final String origin) {
+        return handleVerificationCodesRequest(requestMethod, requestHeaders, origin);
     }
 
     @OPTIONS
