@@ -7,7 +7,7 @@
     <groupId>cc.coopersoft</groupId>
     <artifactId>keycloak-phone-provider-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.2.1</version>
+    <version>1.2.2</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -24,6 +24,7 @@
         <module>keycloak-sms-provider-aliyun</module>
         <module>keycloak-captcha-provider-geetest</module>
         <module>keycloak-captcha-provider-recaptcha</module>
+        <module>keycloak-captcha-provider-tencent</module>
         <module>keycloak-sms-provider-dummy</module>
     </modules>
 
