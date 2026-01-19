@@ -19,9 +19,9 @@ stages:
         name: build_maven
         displayName: Maven 构建
         jdkVersion: '17'
-        mavenVersion: 3.6.3
+        mavenVersion: 3.9.11
         commands:
-          - mvn clean install -DskipTests
+          - mvn clean install -N -DskipTests
           - mvn package -Dmaven.test.skip=true
         artifacts:
           - name: BUILD_ARTIFACT
