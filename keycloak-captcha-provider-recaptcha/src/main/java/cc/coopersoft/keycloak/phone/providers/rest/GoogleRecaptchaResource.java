@@ -1,20 +1,30 @@
 package cc.coopersoft.keycloak.phone.providers.rest;
 
+import cc.coopersoft.keycloak.phone.providers.rest.dto.CaptchaConfigResponse;
+import cc.coopersoft.keycloak.phone.providers.rest.util.ResponseBuilder;
 import cc.coopersoft.keycloak.phone.providers.spi.CaptchaService;
 import cc.coopersoft.keycloak.phone.utils.RegexUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.CacheControl;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
 
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-
 import java.util.Set;
 
+/**
+ * Google reCAPTCHA资源
+ * 提供Google reCAPTCHA配置接口
+ *
+ * @author cooper
+ * @since 2020/10/30
+ */
 public class GoogleRecaptchaResource {
     private static final Logger log = Logger.getLogger(GoogleRecaptchaResource.class);
 
@@ -51,25 +61,60 @@ public class GoogleRecaptchaResource {
         }
     }
 
+    /**
+     * 获取reCAPTCHA配置（GET方式）
+     *
+     * @param requestMethod  请求方法
+     * @param requestHeaders 请求头
+     * @param origin         请求来源
+     * @return 验证码配置
+     */
     @GET
     @Path("code")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getVerificationCodes(@HeaderParam("Access-Control-Request-Method") final String requestMethod,
                                          @HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
                                          @HeaderParam("Origin") final String origin) {
-        CaptchaService captcha = this.session.getProvider(CaptchaService.class);
-        CacheControl cacheControl = new CacheControl();
-        cacheControl.setNoCache(true);
+        try {
+            CaptchaService captcha = this.session.getProvider(CaptchaService.class);
+            String recaptchaConfig = captcha.getFrontendKey(this.auth);
 
-        String geetestCode = captcha.getFrontendKey(this.auth);
-        Response.ResponseBuilder response = Response.status(Response.Status.OK);
-        this.setCrosHeader(response, requestMethod, requestHeaders, origin);
-        return Response.status(Response.Status.OK).entity(geetestCode).cacheControl(cacheControl).build();
+            // 解析旧格式的JSON字符串响应
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode jsonNode = mapper.readTree(recaptchaConfig);
+
+            CaptchaConfigResponse response = CaptchaConfigResponse.builder()
+                    .type("recaptcha")
+                    .captchaAppId(jsonNode.has("siteKey") ? jsonNode.get("siteKey").asText() : null)
+                    .build();
+
+            Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK)
+                    .entity(response)
+                    .type(MediaType.APPLICATION_JSON_TYPE);
+            
+            CacheControl cacheControl = new CacheControl();
+            cacheControl.setNoCache(true);
+            responseBuilder.cacheControl(cacheControl);
+
+            this.setCrosHeader(responseBuilder, requestMethod, requestHeaders, origin);
+            return responseBuilder.build();
+        } catch (Exception e) {
+            log.error("获取reCAPTCHA配置失败", e);
+            return ResponseBuilder.serverError("获取reCAPTCHA配置失败");
+        }
     }
 
+    /**
+     * 处理OPTIONS预检请求
+     *
+     * @param requestMethod  请求方法
+     * @param requestHeaders 请求头
+     * @param origin         请求来源
+     * @return 预检响应
+     */
     @OPTIONS
     @Path("code")
-    public Response getVerificationCodesCros(
+    public Response getVerificationCodesCors(
             @HeaderParam("Access-Control-Request-Method") final String requestMethod,
             @HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
             @HeaderParam("Origin") final String origin) {

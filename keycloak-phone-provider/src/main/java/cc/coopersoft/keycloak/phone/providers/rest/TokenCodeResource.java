@@ -1,7 +1,11 @@
 package cc.coopersoft.keycloak.phone.providers.rest;
 
+import cc.coopersoft.keycloak.phone.providers.constants.ErrorCode;
 import cc.coopersoft.keycloak.phone.providers.constants.MessageSendResult;
 import cc.coopersoft.keycloak.phone.providers.constants.TokenCodeType;
+import cc.coopersoft.keycloak.phone.providers.rest.dto.ResendExpiresResponse;
+import cc.coopersoft.keycloak.phone.providers.rest.dto.SmsCodeResponse;
+import cc.coopersoft.keycloak.phone.providers.rest.util.ResponseBuilder;
 import cc.coopersoft.keycloak.phone.providers.spi.AreaCodeService;
 import cc.coopersoft.keycloak.phone.providers.spi.CaptchaService;
 import cc.coopersoft.keycloak.phone.providers.spi.PhoneMessageService;
@@ -11,28 +15,26 @@ import cc.coopersoft.keycloak.phone.utils.PhoneNumber;
 import cc.coopersoft.keycloak.phone.utils.UserUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
+import org.keycloak.events.EventBuilder;
+import org.keycloak.events.EventType;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
-import org.keycloak.events.EventBuilder;
-import org.keycloak.events.EventType;
-
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MultivaluedHashMap;
-import jakarta.ws.rs.core.MultivaluedMap;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.CacheControl;
 
 import java.io.IOException;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import static jakarta.ws.rs.core.MediaType.*;
+import static jakarta.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
+import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 
 /**
  * TokenCodeResource
@@ -76,7 +78,7 @@ public class TokenCodeResource {
     }
 
     /**
-     * 发送TokenCode的POST请求
+     * 发送TokenCode的POST请求（JSON格式）
      *
      * @param reqBody 请求体
      * @return 响应
@@ -86,8 +88,6 @@ public class TokenCodeResource {
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_JSON)
     public Response sendTokenCodeJson(String reqBody) {
-        CacheControl cacheControl = new CacheControl();
-        cacheControl.setNoCache(true);
         try {
             JsonNode jsonObject = new ObjectMapper().readTree(reqBody);
             MultivaluedHashMap<String, String> formData = new MultivaluedHashMap<>();
@@ -97,13 +97,13 @@ public class TokenCodeResource {
             }
             return this.sendTokenCode(formData);
         } catch (IOException e) {
-            logger.error(e.getMessage());
+            logger.error("解析JSON请求体失败", e);
+            return ResponseBuilder.serverError("请求格式错误");
         }
-        return Response.serverError().cacheControl(cacheControl).build();
     }
 
     /**
-     * 发送TokenCode的POST请求
+     * 发送TokenCode的POST请求（表单格式）
      *
      * @param formData 表单数据
      * @return 响应
@@ -114,55 +114,40 @@ public class TokenCodeResource {
     @Consumes(APPLICATION_FORM_URLENCODED)
     public Response sendTokenCode(MultivaluedMap<String, String> formData) {
         PhoneNumber phoneNumber = new PhoneNumber(formData);
-        HashMap<String, Object> retData = new HashMap<>();
-        CacheControl cacheControl = new CacheControl();
-        cacheControl.setNoCache(true);
 
+        // 验证手机号
         if (phoneNumber.isEmpty()) {
-            retData.put("status", 0);
-            retData.put("error", "Must inform a cellphone number.");
-            retData.put("errormsg", "phoneNumberCannotBeEmpty");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
+            return ResponseBuilder.error(ErrorCode.PHONE_NUMBER_REQUIRED);
         }
 
-        // 验证码
+        // 验证人机验证码
         if (!session.getProvider(CaptchaService.class).verify(formData, this.auth) &&
                 !isTrustedClient(formData.getFirst("client_id"), formData.getFirst("client_secret"))) {
-            retData.put("status", -1);
-            retData.put("error", "Captcha not completed.");
-            retData.put("errormsg", "captchaNotCompleted");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
+            return ResponseBuilder.error(ErrorCode.CAPTCHA_REQUIRED);
         }
 
-        // 区号
+        // 验证区号
         AreaCodeService areaCodeService = session.getProvider(AreaCodeService.class);
         if (!areaCodeService.isAreaCodeAllowed(phoneNumber.getAreaCodeInt())) {
-            retData.put("status", -2);
-            retData.put("error", "This area is not supported");
-            retData.put("errormsg", "areaNotSupported");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
+            return ResponseBuilder.error(ErrorCode.AREA_NOT_SUPPORTED);
         }
 
+        // 检查用户是否存在（非注册和验证类型需要）
         if (tokenCodeType != TokenCodeType.REGISTRATION && tokenCodeType != TokenCodeType.VERIFY) {
-            // 需要检测用户是否存在
             UserModel user = UserUtils.findUserByPhone(session.users(), session.getContext().getRealm(), phoneNumber);
             if (user == null) {
-                retData.put("status", 0);
-                retData.put("error", "This user not exists");
-                retData.put("errormsg", "userNotExists");
-                return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
+                return ResponseBuilder.error(ErrorCode.USER_NOT_FOUND);
             }
         }
 
-        logger.info(String.format("Requested %s code to %s", tokenCodeType.name(), phoneNumber.getFullPhoneNumber()));
+        logger.info(String.format("请求发送 %s 验证码到 %s", tokenCodeType.name(), phoneNumber.getFullPhoneNumber()));
 
         // 创建事件构建器来记录短信发送事件
         EventBuilder eventBuilder = new EventBuilder(session.getContext().getRealm(), session, session.getContext().getConnection())
                 .event(EventType.CUSTOM_REQUIRED_ACTION)
                 .detail("phone_number", phoneNumber.getFullPhoneNumber())
                 .detail("token_code_type", tokenCodeType.name())
-                .detail("area_code", phoneNumber.getAreaCode())
-                .detail("phone_number", phoneNumber.getPhoneNumber());
+                .detail("area_code", phoneNumber.getAreaCode());
 
         // 如果有已认证的用户，记录用户信息
         if (auth != null && auth.getUser() != null) {
@@ -175,6 +160,7 @@ public class TokenCodeResource {
             }
         }
 
+        // 发送短信验证码
         MessageSendResult result = session.getProvider(PhoneMessageService.class).sendTokenCode(phoneNumber, tokenCodeType);
 
         if (result.ok()) {
@@ -184,9 +170,12 @@ public class TokenCodeResource {
                     .detail("resend_expires", String.valueOf(result.getResendExpiresTime()))
                     .success();
 
-            retData.put("status", 1);
-            retData.put("expires_in", result.getExpiresTime());
-            retData.put("resend_expires", result.getResendExpiresTime());
+            // 返回成功响应
+            SmsCodeResponse response = SmsCodeResponse.success(
+                    result.getExpiresTime(),
+                    result.getResendExpiresTime()
+            );
+            return ResponseBuilder.ok(response);
         } else {
             // 记录失败事件
             eventBuilder.detail("result", "failure")
@@ -194,12 +183,9 @@ public class TokenCodeResource {
                     .detail("error_message", result.getErrorMessage())
                     .error("SMS_SEND_FAILED");
 
-            // 不知道为什么这里当时为什么要写成固定的 @Author Dracowyn
-            retData.put("status", result.ok() ? 1 : 0);
-            retData.put("error", result.getErrorMessage());
-            retData.put("errormsg", result.getErrorMessage());
+            // 返回错误响应
+            return ResponseBuilder.error(ErrorCode.SMS_SEND_FAILED, result.getErrorMessage());
         }
-        return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
     }
 
     /**
@@ -213,16 +199,14 @@ public class TokenCodeResource {
     @Produces(APPLICATION_JSON)
     @Consumes(APPLICATION_JSON)
     public Response getResendExpireJson(String reqBody) {
-        CacheControl cacheControl = new CacheControl();
-        cacheControl.setNoCache(true);
         try {
             JsonNode jsonObject = new ObjectMapper().readTree(reqBody);
             return this.getResendExpire(jsonObject.get(PhoneConstants.FIELD_AREA_CODE).asText(),
                     jsonObject.get(PhoneConstants.FIELD_PHONE_NUMBER).asText());
         } catch (IOException e) {
-            logger.error(e);
+            logger.error("解析JSON请求体失败", e);
+            return ResponseBuilder.serverError("请求格式错误");
         }
-        return Response.serverError().cacheControl(cacheControl).build();
     }
 
     /**
@@ -253,15 +237,10 @@ public class TokenCodeResource {
     @Produces(APPLICATION_JSON)
     public Response getResendExpire(@QueryParam(PhoneConstants.FIELD_AREA_CODE) String areaCode,
                                     @QueryParam(PhoneConstants.FIELD_PHONE_NUMBER) String phoneNumberStr) {
-        HashMap<String, Object> retData = new HashMap<>();
         PhoneNumber phoneNumber = new PhoneNumber(areaCode + phoneNumberStr);
-        CacheControl cacheControl = new CacheControl();
-        cacheControl.setNoCache(true);
+        
         if (phoneNumber.isEmpty()) {
-            retData.put("status", 0);
-            retData.put("error", "Must inform a phone number.");
-            retData.put("errormsg", "phoneNumberCannotBeEmpty");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
+            return ResponseBuilder.error(ErrorCode.PHONE_NUMBER_REQUIRED);
         }
 
         TokenCodeService tokenCodeService = session.getProvider(TokenCodeService.class);
@@ -269,14 +248,11 @@ public class TokenCodeResource {
             Date resendExpireDate = tokenCodeService.getResendExpires(phoneNumber, tokenCodeType);
             long resendExpire = resendExpireDate.getTime();
 
-            retData.put("status", 1);
-            retData.put("resend_expire", resendExpire);
-            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
+            ResendExpiresResponse response = ResendExpiresResponse.of(resendExpire);
+            return ResponseBuilder.ok(response);
         } catch (BadRequestException e) {
-            retData.put("status", 0);
-            retData.put("error", e.getMessage());
-            retData.put("errormsg", "serverError");
-            return Response.ok(retData, APPLICATION_JSON_TYPE).cacheControl(cacheControl).build();
+            logger.error("获取重发时间失败", e);
+            return ResponseBuilder.error(ErrorCode.TOKEN_NOT_FOUND, e.getMessage());
         }
     }
 

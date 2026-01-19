@@ -5,27 +5,38 @@ import lombok.Getter;
 import java.time.Instant;
 import java.util.Date;
 
+/**
+ * 短信发送结果类
+ * 用于封装短信发送的结果信息
+ *
+ * @author cooper
+ * @since 2020/10/29
+ */
 public class MessageSendResult {
     /**
      * 短信发送结果的状态
      */
     @Getter
     private final int status;
+    
     /**
      * 错误代码
      */
     @Getter
     private String errorCode;
+    
     /**
      * 错误信息
      */
     @Getter
     private String errorMessage;
+    
     /**
      * 是否可以重发短信的截止时间
      */
     @Getter
     private Date resendExpires;
+    
     /**
      * 短信的过期时间
      */
@@ -35,10 +46,40 @@ public class MessageSendResult {
     /**
      * 构造方法
      *
-     * @param status 结果状态
+     * @param status 结果状态（>0表示成功，<=0表示失败）
      */
     public MessageSendResult(int status) {
         this.status = status;
+    }
+
+    /**
+     * 创建成功结果
+     *
+     * @return MessageSendResult实例
+     */
+    public static MessageSendResult success() {
+        return new MessageSendResult(1);
+    }
+
+    /**
+     * 创建失败结果
+     *
+     * @param errorCode 错误代码
+     * @param errorMessage 错误信息
+     * @return MessageSendResult实例
+     */
+    public static MessageSendResult failure(String errorCode, String errorMessage) {
+        return new MessageSendResult(-1).setError(errorCode, errorMessage);
+    }
+
+    /**
+     * 创建失败结果（使用ErrorCode枚举）
+     *
+     * @param errorCode 错误码枚举
+     * @return MessageSendResult实例
+     */
+    public static MessageSendResult failure(ErrorCode errorCode) {
+        return new MessageSendResult(-1).setError(errorCode.getCode(), errorCode.getMessage());
     }
 
     /**

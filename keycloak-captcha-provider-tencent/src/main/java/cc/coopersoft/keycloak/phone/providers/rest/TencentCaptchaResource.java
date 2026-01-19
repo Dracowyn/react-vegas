@@ -1,17 +1,20 @@
 package cc.coopersoft.keycloak.phone.providers.rest;
 
+import cc.coopersoft.keycloak.phone.providers.rest.dto.CaptchaConfigResponse;
+import cc.coopersoft.keycloak.phone.providers.rest.util.ResponseBuilder;
 import cc.coopersoft.keycloak.phone.providers.spi.CaptchaService;
 import cc.coopersoft.keycloak.phone.utils.RegexUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.CacheControl;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
-
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
 import java.util.Set;
 
@@ -74,14 +77,34 @@ public class TencentCaptchaResource {
     private Response handleVerificationCodeRequest(final String requestMethod,
                                                     final String requestHeaders,
                                                     final String origin) {
-        CaptchaService captcha = this.session.getProvider(CaptchaService.class);
-        CacheControl cacheControl = new CacheControl();
-        cacheControl.setNoCache(false);
+        try {
+            CaptchaService captcha = this.session.getProvider(CaptchaService.class);
+            String captchaConfig = captcha.getFrontendKey(this.auth);
 
-        String captchaConfig = captcha.getFrontendKey(this.auth);
-        Response.ResponseBuilder response = Response.status(Response.Status.OK);
-        this.setCorsHeader(response, requestMethod, requestHeaders, origin);
-        return response.entity(captchaConfig).cacheControl(cacheControl).build();
+            // 解析旧格式的JSON字符串响应
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode jsonNode = mapper.readTree(captchaConfig);
+
+            CaptchaConfigResponse response = CaptchaConfigResponse.builder()
+                    .type("tencent")
+                    .captchaAppId(jsonNode.has("captchaAppId") ? jsonNode.get("captchaAppId").asText() : null)
+                    .success(jsonNode.has("success") ? jsonNode.get("success").asInt() : null)
+                    .build();
+
+            Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK)
+                    .entity(response)
+                    .type(MediaType.APPLICATION_JSON_TYPE);
+            
+            CacheControl cacheControl = new CacheControl();
+            cacheControl.setNoCache(false);
+            responseBuilder.cacheControl(cacheControl);
+
+            this.setCorsHeader(responseBuilder, requestMethod, requestHeaders, origin);
+            return responseBuilder.build();
+        } catch (Exception e) {
+            log.error("获取腾讯云验证码配置失败", e);
+            return ResponseBuilder.serverError("获取腾讯云验证码配置失败");
+        }
     }
 
     /**
