@@ -88,7 +88,6 @@ public class TencentCaptchaResource {
             CaptchaConfigResponse response = CaptchaConfigResponse.builder()
                     .type("tencent")
                     .captchaAppId(jsonNode.has("captchaAppId") ? jsonNode.get("captchaAppId").asText() : null)
-                    .success(jsonNode.has("success") ? jsonNode.get("success").asInt() : null)
                     .build();
 
             Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK)

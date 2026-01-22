@@ -82,8 +82,8 @@ public class GeetestResource {
 
             CaptchaConfigResponse response = CaptchaConfigResponse.builder()
                     .type("geetest")
-                    .success(jsonNode.has("success") ? jsonNode.get("success").asInt() : null)
                     .geetestId(jsonNode.has("gt") ? jsonNode.get("gt").asText() : null)
+                    .captchaAppId(jsonNode.has("gt") ? jsonNode.get("gt").asText() : null)
                     .build();
 
             Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK)
