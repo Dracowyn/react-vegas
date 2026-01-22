@@ -101,7 +101,7 @@ public class VerificationCodeResource {
         }
 
         try {
-            UserModel user = auth.getUser();
+            UserModel user = auth.user();
             getTokenCodeService().setUserPhoneNumberByCode(user, phoneNumber, code);
             return ResponseBuilder.noContent();
         } catch (BadRequestException e) {
@@ -132,8 +132,8 @@ public class VerificationCodeResource {
             return ResponseBuilder.error(ErrorCode.AUTHENTICATION_REQUIRED);
         }
 
-        UserModel user = auth.getUser();
-        
+        UserModel user = auth.user();
+
         // 检查邮箱是否已验证
         if (!user.isEmailVerified()) {
             return ResponseBuilder.error(ErrorCode.EMAIL_NOT_VERIFIED, "取消绑定手机号前需要先验证邮箱");

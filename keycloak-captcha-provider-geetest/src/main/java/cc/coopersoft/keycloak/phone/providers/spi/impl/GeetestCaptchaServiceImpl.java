@@ -55,7 +55,7 @@ public class GeetestCaptchaServiceImpl implements CaptchaService {
      * @return 用户ID，如果为空则返回默认用户ID
      */
     private String getUserIdByAuthResult(AuthenticationManager.AuthResult user) {
-        return user != null ? user.getUser().getId() : DEFAULT_USER_ID;
+        return user != null ? user.user().getId() : DEFAULT_USER_ID;
     }
 
     @Override

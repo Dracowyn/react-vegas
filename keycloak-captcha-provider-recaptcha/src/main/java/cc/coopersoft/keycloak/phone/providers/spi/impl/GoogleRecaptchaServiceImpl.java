@@ -34,9 +34,10 @@ public class GoogleRecaptchaServiceImpl implements CaptchaService {
     }
 
     private String getUserIdByAuthResult(AuthenticationManager.AuthResult user) {
+
         String uid = "guest";
         if (user != null) {
-            uid = user.getUser().getId();
+            uid = user.user().getId();
         }
         return uid;
     }
