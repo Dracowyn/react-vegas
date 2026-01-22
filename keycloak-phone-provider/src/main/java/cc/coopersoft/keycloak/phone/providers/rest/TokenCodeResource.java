@@ -90,8 +90,7 @@ public class TokenCodeResource {
         try {
             JsonNode jsonObject = new ObjectMapper().readTree(reqBody);
             MultivaluedHashMap<String, String> formData = new MultivaluedHashMap<>();
-            for (Iterator<Map.Entry<String, JsonNode>> it = jsonObject.fields(); it.hasNext(); ) {
-                Map.Entry<String, JsonNode> node = it.next();
+            for (Map.Entry<String, JsonNode> node : jsonObject.properties()) {
                 formData.addAll(node.getKey(), node.getValue().asText());
             }
             return this.sendTokenCode(formData);
