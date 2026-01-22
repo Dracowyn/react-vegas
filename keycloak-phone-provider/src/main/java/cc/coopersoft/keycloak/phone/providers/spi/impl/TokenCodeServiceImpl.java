@@ -22,12 +22,10 @@ import org.keycloak.models.UserModel;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
-import jakarta.persistence.TemporalType;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 
-import java.time.Instant;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -61,7 +59,7 @@ public class TokenCodeServiceImpl implements TokenCodeService {
                     .setParameter("realmId", getRealm().getId())
                     .setParameter("areaCode", phoneNumber.getAreaCode())
                     .setParameter("phoneNumber", phoneNumber.getPhoneNumber())
-                    .setParameter("now", new Date(), TemporalType.TIMESTAMP)
+                    .setParameter("now", LocalDateTime.now())
                     .setParameter("type", tokenCodeType.name())
                     .getSingleResult();
 
@@ -119,13 +117,13 @@ public class TokenCodeServiceImpl implements TokenCodeService {
                     .setParameter("realmId", getRealm().getId())
                     .setParameter("areaCode", phoneNumber.getAreaCode())
                     .setParameter("phoneNumber", phoneNumber.getPhoneNumber())
-                    .setParameter("now", new Date(), TemporalType.TIMESTAMP)
+                    .setParameter("now", LocalDateTime.now())
                     .setParameter("type", tokenCodeType.name())
                     .getSingleResult();
 
             if (entityList != null) {
-                Date resendExpiresAt = entityList.getResendExpiresAt();
-                return (resendExpiresAt == null || resendExpiresAt.before(new Date()));
+                LocalDateTime resendExpiresAt = entityList.getResendExpiresAt();
+                return (resendExpiresAt == null || resendExpiresAt.isBefore(LocalDateTime.now()));
             } else {
                 return true;
             }
@@ -137,14 +135,14 @@ public class TokenCodeServiceImpl implements TokenCodeService {
     @Override
     public boolean isAbusing(PhoneNumber phoneNumber, TokenCodeType tokenCodeType) {
 
-        Date oneHourAgo = new Date(System.currentTimeMillis() - TimeUnit.HOURS.toMillis(1));
+        LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
 
         List<TokenCodeEntity> entities = getEntityManager()
                 .createNamedQuery("processesSince", TokenCodeEntity.class)
                 .setParameter("realmId", getRealm().getId())
                 .setParameter("areaCode", phoneNumber.getAreaCode())
                 .setParameter("phoneNumber", phoneNumber.getPhoneNumber())
-                .setParameter("date", oneHourAgo, TemporalType.TIMESTAMP)
+                .setParameter("date", oneHourAgo)
                 .setParameter("type", tokenCodeType.name())
                 .getResultList();
 
@@ -154,7 +152,7 @@ public class TokenCodeServiceImpl implements TokenCodeService {
     @Override
     public void persistCode(TokenCodeRepresentation tokenCode, TokenCodeType tokenCodeType, MessageSendResult sendResult) {
         TokenCodeEntity entity = new TokenCodeEntity();
-        Instant now = Instant.now();
+        LocalDateTime now = LocalDateTime.now();
 
         entity.setId(tokenCode.getId());
         entity.setRealmId(getRealm().getId());
@@ -162,7 +160,7 @@ public class TokenCodeServiceImpl implements TokenCodeService {
         entity.setPhoneNumber(tokenCode.getPhoneNumber());
         entity.setCode(tokenCode.getCode());
         entity.setType(tokenCodeType.name());
-        entity.setCreatedAt(Date.from(now));
+        entity.setCreatedAt(now);
         entity.setExpiresAt(sendResult.getExpires());
         entity.setResendExpiresAt(sendResult.getResendExpires());
         entity.setConfirmed(tokenCode.getConfirmed());
@@ -284,7 +282,7 @@ public class TokenCodeServiceImpl implements TokenCodeService {
     }
 
     @Override
-    public Date getResendExpires(PhoneNumber phoneNumber, TokenCodeType tokenCodeType) {
+    public LocalDateTime getResendExpires(PhoneNumber phoneNumber, TokenCodeType tokenCodeType) {
         if (this.canResend(phoneNumber, tokenCodeType)) {
             throw new BadRequestException(String.format("Resend timeout in %s process for %s is finished.",
                     tokenCodeType.getLabel(), phoneNumber.getFullPhoneNumber()));

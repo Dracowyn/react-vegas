@@ -2,8 +2,7 @@ package cc.coopersoft.keycloak.phone.providers.constants;
 
 import lombok.Getter;
 
-import java.time.Instant;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 短信发送结果类
@@ -35,13 +34,13 @@ public class MessageSendResult {
      * 是否可以重发短信的截止时间
      */
     @Getter
-    private Date resendExpires;
-    
+    private LocalDateTime resendExpires;
+
     /**
      * 短信的过期时间
      */
     @Getter
-    private Date expires;
+    private LocalDateTime expires;
 
     /**
      * 构造方法
@@ -110,7 +109,7 @@ public class MessageSendResult {
      * @param resendExpires 重发短信的截止时间
      * @return 当前MessageSendResult对象
      */
-    public MessageSendResult setResendExpires(Date resendExpires) {
+    public MessageSendResult setResendExpires(LocalDateTime resendExpires) {
         this.resendExpires = resendExpires;
         return this;
     }
@@ -122,8 +121,7 @@ public class MessageSendResult {
      * @return 当前MessageSendResult对象
      */
     public MessageSendResult setResendExpires(int resendExpires) {
-        Instant now = Instant.now();
-        this.resendExpires = Date.from(now.plusSeconds(resendExpires));
+        this.resendExpires = LocalDateTime.now().plusSeconds(resendExpires);
         return this;
     }
 
@@ -133,7 +131,8 @@ public class MessageSendResult {
      * @return 是否可以重发短信的截止时间的时间戳
      */
     public long getResendExpiresTime() {
-        return this.resendExpires != null ? this.resendExpires.getTime() : 0;
+        return this.resendExpires != null ?
+            java.time.ZoneId.systemDefault().getRules().getOffset(this.resendExpires).getTotalSeconds() : 0;
     }
 
     /**
@@ -142,7 +141,7 @@ public class MessageSendResult {
      * @param expires 短信的过期时间
      * @return 当前MessageSendResult对象
      */
-    public MessageSendResult setExpires(Date expires) {
+    public MessageSendResult setExpires(LocalDateTime expires) {
         this.expires = expires;
         return this;
     }
@@ -154,8 +153,7 @@ public class MessageSendResult {
      * @return 当前MessageSendResult对象
      */
     public MessageSendResult setExpires(int expires) {
-        Instant now = Instant.now();
-        this.expires = Date.from(now.plusSeconds(expires));
+        this.expires = LocalDateTime.now().plusSeconds(expires);
         return this;
     }
 
@@ -165,6 +163,7 @@ public class MessageSendResult {
      * @return 短信的过期时间的时间戳
      */
     public long getExpiresTime() {
-        return this.expires != null ? this.expires.getTime() : 0;
+        return this.expires != null ?
+            java.time.ZoneId.systemDefault().getRules().getOffset(this.expires).getTotalSeconds() : 0;
     }
 }

@@ -7,7 +7,7 @@ import cc.coopersoft.keycloak.phone.utils.PhoneNumber;
 import org.keycloak.models.UserModel;
 import org.keycloak.provider.Provider;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 验证码服务
@@ -129,5 +129,5 @@ public interface TokenCodeService extends Provider {
      * @param tokenCodeType 验证码类型
      * @return 验证码过期时间
      */
-    Date getResendExpires(PhoneNumber phoneNumber, TokenCodeType tokenCodeType);
+    LocalDateTime getResendExpires(PhoneNumber phoneNumber, TokenCodeType tokenCodeType);
 }

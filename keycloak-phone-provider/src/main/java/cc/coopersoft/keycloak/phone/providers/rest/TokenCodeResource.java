@@ -29,8 +29,7 @@ import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
 
 import java.io.IOException;
-import java.util.Date;
-import java.util.Iterator;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import static jakarta.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
@@ -245,8 +244,8 @@ public class TokenCodeResource {
 
         TokenCodeService tokenCodeService = session.getProvider(TokenCodeService.class);
         try {
-            Date resendExpireDate = tokenCodeService.getResendExpires(phoneNumber, tokenCodeType);
-            long resendExpire = resendExpireDate.getTime();
+            LocalDateTime resendExpireDate = tokenCodeService.getResendExpires(phoneNumber, tokenCodeType);
+            long resendExpire = resendExpireDate.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
 
             ResendExpiresResponse response = ResendExpiresResponse.of(resendExpire);
             return ResponseBuilder.ok(response);

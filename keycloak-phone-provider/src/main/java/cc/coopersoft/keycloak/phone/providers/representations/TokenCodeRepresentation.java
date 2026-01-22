@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import org.keycloak.models.utils.KeycloakModelUtils;
 
 import java.security.SecureRandom;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -18,9 +18,9 @@ public class TokenCodeRepresentation {
     private String phoneNumber;
     private String code;
     private String type;
-    private Date createdAt;
-    private Date expiresAt;
-    private Date resendExpiresAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime expiresAt;
+    private LocalDateTime resendExpiresAt;
     private Boolean confirmed;
 
     public static TokenCodeRepresentation forPhoneNumber(PhoneNumber phoneNumber) {

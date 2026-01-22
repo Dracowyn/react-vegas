@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 import jakarta.persistence.*;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Getter
@@ -53,17 +53,14 @@ public class TokenCodeEntity {
     @Column(name = "CODE", nullable = false)
     private String code;
 
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "CREATED_AT", nullable = false)
-    private Date createdAt;
+    private LocalDateTime createdAt;
 
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "RESEND_EXPIRES_AT", nullable = false)
-    private Date resendExpiresAt;
+    private LocalDateTime resendExpiresAt;
 
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "EXPIRES_AT", nullable = false)
-    private Date expiresAt;
+    private LocalDateTime expiresAt;
 
     @Column(name = "CONFIRMED", nullable = false)
     private Boolean confirmed;
