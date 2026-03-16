@@ -27,7 +27,8 @@ export const Vegas = forwardRef<{
 		loop = true,
 		preload = false,
 		preloadImage = false,
-		preLoadImageBatch = 3,
+		preloadImageBatch,
+		preLoadImageBatch,
 		preloadVideo = false,
 		showLoading = false,
 		timer = false,
@@ -55,14 +56,17 @@ export const Vegas = forwardRef<{
 	// 状态管理
 	const [isTransitioning, setIsTransitioning] = useState(false);
 	const [showDefaultBg, setShowDefaultBg] = useState(true);
+	const defaultBackgroundTimerRef = useRef<number | null>(null);
+	const hideDefaultBackgroundTimerRef = useRef<number | null>(null);
 
 	// 日志函数
 	const {log, logWarn, logError} = useLogger(debug);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const effectivePreloadImageBatch = preloadImageBatch ?? preLoadImageBatch ?? 3;
 
 	// 预加载资源
 	const {loading, loadProgress, loadedImages, batchPreloadImages} =
-		usePreload(slides, preloadImage, preloadVideo, preLoadImageBatch, log, logWarn, logError);
+		usePreload(slides, preloadImage, preloadVideo, effectivePreloadImageBatch, log, logWarn, logError);
 
 	// 动画变体配置
 	const {variants} = useAnimationVariants(transitionDuration);
@@ -74,8 +78,6 @@ export const Vegas = forwardRef<{
 		loop,
 		shuffle,
 		isTransitioning,
-		firstTransition,
-		firstTransitionDuration,
 		log,
 		onWalk
 	);
@@ -89,23 +91,40 @@ export const Vegas = forwardRef<{
 		setIsFirstTransition,
 		play: statePlay,
 		pause: statePause,
-		next,
-		previous,
+		next: stateNext,
+		previous: statePrevious,
 	} = vegasState;
+
+	const startTransition = useCallback((transitionStarted: boolean) => {
+		if (transitionStarted) {
+			setIsTransitioning(true);
+		}
+
+		return transitionStarted;
+	}, []);
+
+	const next = useCallback(() => startTransition(stateNext()), [startTransition, stateNext]);
+	const previous = useCallback(() => startTransition(statePrevious()), [startTransition, statePrevious]);
 
 	// 播放控制函
 	const play = useCallback(() => {
 		statePlay();
+
 		if (isFirstTransition && showDefaultBg) {
 			logWarn("默认背景显示中，等待动画完成");
-			setTimeout(() => {
+			if (hideDefaultBackgroundTimerRef.current !== null) {
+				clearTimeout(hideDefaultBackgroundTimerRef.current);
+			}
+
+			hideDefaultBackgroundTimerRef.current = window.setTimeout(() => {
 				setShowDefaultBg(false);
 				log("默认背景隐藏");
 			}, transitionDuration);
 			setIsFirstTransition(false);
 		}
+
 		onPlay?.();
-	}, [statePlay, isFirstTransition, showDefaultBg, onPlay]);
+	}, [isFirstTransition, log, logWarn, onPlay, showDefaultBg, statePlay, transitionDuration]);
 
 	// 暂停控制函数
 	const pause = useCallback(() => {
@@ -117,51 +136,96 @@ export const Vegas = forwardRef<{
 	useAutoplay(isPlaying, isTransitioning, currentSlide, slides, delay, next, log);
 
 	// 页面可见性变化处理
-	useVisibilityChange(play, pause, log);
+	useVisibilityChange(isPlaying, play, pause, log);
+
+	useEffect(() => {
+		setShowDefaultBg(Boolean(defaultBackground));
+	}, [defaultBackground]);
 
 	// 初始化
 	useEffect(() => {
 		log("Vegas组件开始初始化");
+		onInit?.();
+	}, [log, onInit]);
 
-		// 预加载资源
-		if (preload) {
-			log("开始预加载资源");
-			setIsPlaying(false);
-			batchPreloadImages().then(() => {
-				if (autoplay && !defaultBackground) {
-					play();
-				}
-			});
+	useEffect(() => {
+		let disposed = false;
+
+		if (defaultBackgroundTimerRef.current !== null) {
+			clearTimeout(defaultBackgroundTimerRef.current);
+			defaultBackgroundTimerRef.current = null;
 		}
 
-		onInit?.();
+		if (!preload) {
+			setIsPlaying(false);
+			if (defaultBackground) {
+				log(`存在默认背景，关闭自动播放`);
+				log(`设置默认背景: ${defaultBackground}`);
+				log(`设置默认背景显示定时器，延迟: ${defaultBackgroundDuration}ms`);
+				defaultBackgroundTimerRef.current = window.setTimeout(() => {
+					if (!disposed && autoplay) {
+						log("默认背景显示完成，开始自动播放");
+						play();
+					}
+				}, defaultBackgroundDuration);
+			} else if (autoplay) {
+				play();
+			}
 
-		const cleanup = () => {
+			return () => {
+				disposed = true;
+				if (defaultBackgroundTimerRef.current !== null) {
+					clearTimeout(defaultBackgroundTimerRef.current);
+					defaultBackgroundTimerRef.current = null;
+				}
+			};
+		}
+
+		log("开始预加载资源");
+		setIsPlaying(false);
+		batchPreloadImages().then(() => {
+			if (disposed) {
+				return;
+			}
+
+			if (defaultBackground) {
+				log(`存在默认背景，关闭自动播放`);
+				log(`设置默认背景: ${defaultBackground}`);
+				log(`设置默认背景显示定时器，延迟: ${defaultBackgroundDuration}ms`);
+				defaultBackgroundTimerRef.current = window.setTimeout(() => {
+					if (!disposed && autoplay) {
+						log("默认背景显示完成，开始自动播放");
+						play();
+					}
+				}, defaultBackgroundDuration);
+			} else if (autoplay) {
+				play();
+			}
+		});
+
+		return () => {
+			disposed = true;
+			if (defaultBackgroundTimerRef.current !== null) {
+				clearTimeout(defaultBackgroundTimerRef.current);
+				defaultBackgroundTimerRef.current = null;
+			}
+		};
+	}, [autoplay, batchPreloadImages, defaultBackground, defaultBackgroundDuration, log, pause, play, preload, setIsPlaying]);
+
+	useEffect(() => {
+		return () => {
 			log("Vegas组件卸载");
 			pause();
+
+			if (defaultBackgroundTimerRef.current !== null) {
+				clearTimeout(defaultBackgroundTimerRef.current);
+			}
+
+			if (hideDefaultBackgroundTimerRef.current !== null) {
+				clearTimeout(hideDefaultBackgroundTimerRef.current);
+			}
 		};
-
-		if (defaultBackground) {
-			log(`存在默认背景，关闭自动播放`);
-			setIsPlaying(false);
-			log(`设置默认背景: ${defaultBackground}`);
-			log(`设置默认背景显示定时器，延迟: ${defaultBackgroundDuration}ms`);
-			const timer = window.setTimeout(() => {
-				log("默认背景显示完成，开始自动播放");
-				if (autoplay) {
-					play();
-				}
-			}, defaultBackgroundDuration);
-			return () => {
-				clearTimeout(timer);
-				cleanup();
-			};
-		} else if (autoplay) {
-			play();
-		}
-
-		return cleanup;
-	}, []);
+	}, [log, pause]);
 
 	// 动画结束处理
 	useEffect(() => {
@@ -188,6 +252,7 @@ export const Vegas = forwardRef<{
 					slide={slide}
 					index={index}
 					isFirstTransition={isFirstTransition}
+					firstTransition={firstTransition}
 					firstTransitionDuration={firstTransitionDuration}
 					transitionDuration={transitionDuration}
 					transition={transition}
@@ -207,8 +272,8 @@ export const Vegas = forwardRef<{
 			logError("渲染幻灯片时发生错误:", error);
 			return null;
 		}
-	}, [next, variants, transition, color, cover, align, valign, isFirstTransition,
-		firstTransitionDuration, transitionDuration]);
+	}, [align, color, cover, firstTransition, firstTransitionDuration, isFirstTransition,
+		loadedImages, log, logError, next, preloadImage, slides, transition, transitionDuration, valign, variants]);
 
 
 	// 暴露组件实例方法

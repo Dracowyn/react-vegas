@@ -5,6 +5,7 @@ export interface VegasProps {
 	loop?: boolean;                   // 是否循环播放
 	preload?: boolean;                // 是否预加载资源
 	preloadImage?: boolean;           // 是否预加载图片
+	preloadImageBatch?: number;       // 批量预加载图片数量
 	preLoadImageBatch?: number;       // 批量预加载图片数量
 	preloadVideo?: boolean;           // 是否预加载视频
 	showLoading?: boolean;            // 是否显示加载指示器

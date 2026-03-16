@@ -33,22 +33,23 @@
     "storybook": "storybook dev"
   },
   "devDependencies": {
-    "@rsbuild/core": "^1.5.4",
-    "@rsbuild/plugin-react": "^1.4.0",
-    "@rslib/core": "^0.13.0",
-    "@storybook/addon-docs": "^9.1.5",
-    "@types/react": "^19.1.12",
-    "react": "^19.1.1",
-    "storybook": "^9.1.5",
-    "storybook-addon-rslib": "^2.1.0",
-    "storybook-react-rsbuild": "^2.1.0",
-    "typescript": "^5.9.2"
+    "@rsbuild/core": "^1.7.3",
+    "@rsbuild/plugin-react": "^1.4.6",
+    "@rslib/core": "^0.20.0",
+    "@storybook/addon-docs": "^10.2.19",
+    "@types/react": "^19.2.14",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.0",
+    "storybook": "^10.2.19",
+    "storybook-addon-rslib": "^3.3.2",
+    "storybook-react-rsbuild": "^3.3.2",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "react": ">=16.9.0",
-    "react-dom": ">=16.9.0"
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
   },
   "dependencies": {
-    "motion": "^12.23.12"
+    "motion": "^12.36.0"
   }
 }

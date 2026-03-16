@@ -148,6 +148,7 @@ const slides = [
 | preload                   | boolean | false     | 启用资源预加载   |
 | preloadImage              | boolean | false     | 预加载图片     |
 | preloadImageBatch         | number  | 3         | 批量预加载图片数量 |
+| preLoadImageBatch         | number  | 3         | 旧属性名，建议改用 preloadImageBatch |
 | preloadVideo              | boolean | false     | 预加载视频     |
 | showLoading               | boolean | false     | 显示加载指示器   |
 | defaultBackground         | string  | undefined | 加载背景图     |

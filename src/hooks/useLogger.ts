@@ -1,18 +1,27 @@
-import {useCallback} from "react";
+import {useMemo} from "react";
 import {Logger} from "../types";
+
+const noopLogger: Logger = () => {
+};
 
 /**
  * 自定义日志钩子
  * @param debug
  */
 export const useLogger = (debug: boolean) => {
-	const createLogger = useCallback((type: 'log' | 'error' | 'warn'): Logger =>
-		debug ? console[type].bind(console) : () => {
-		}, [debug]);
+	return useMemo(() => {
+		if (!debug) {
+			return {
+				log: noopLogger,
+				logError: noopLogger,
+				logWarn: noopLogger
+			};
+		}
 
-	const log = createLogger('log');
-	const logError = createLogger('error');
-	const logWarn = createLogger('warn');
-
-	return {log, logError, logWarn};
+		return {
+			log: console.log.bind(console) as Logger,
+			logError: console.error.bind(console) as Logger,
+			logWarn: console.warn.bind(console) as Logger
+		};
+	}, [debug]);
 };

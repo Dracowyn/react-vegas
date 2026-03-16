@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Logger } from "../types";
 
 /**
@@ -8,16 +8,24 @@ import { Logger } from "../types";
  * @param log
  */
 export const useVisibilityChange = (
+	isPlaying: boolean,
 	play: () => void,
 	pause: () => void,
 	log: Logger
 ) => {
+	const shouldResumeRef = useRef(false);
+
+	useEffect(() => {
+		shouldResumeRef.current = isPlaying;
+	}, [isPlaying]);
+
 	useEffect(() => {
 		const handleVisibilityChange = () => {
 			if (document.hidden) {
+				shouldResumeRef.current = isPlaying;
 				log("页面隐藏，暂停播放幻灯片");
 				pause();
-			} else {
+			} else if (shouldResumeRef.current) {
 				log("页面可见，继续播放幻灯片");
 				play();
 			}
@@ -27,5 +35,5 @@ export const useVisibilityChange = (
 		return () => {
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
-	}, [play, pause]);
+	}, [isPlaying, log, pause, play]);
 };

@@ -1,6 +1,27 @@
 import { useState, useCallback, useEffect } from "react";
 import { SlideProps, Logger } from "../types";
 
+const buildSlideOrder = (length: number, shuffle: boolean) => {
+	const order = Array.from({length}, (_, index) => index);
+
+	if (shuffle) {
+		for (let index = order.length - 1; index > 0; index--) {
+			const randomIndex = Math.floor(Math.random() * (index + 1));
+			[order[index], order[randomIndex]] = [order[randomIndex], order[index]];
+		}
+	}
+
+	return order;
+};
+
+const clampSlideIndex = (index: number, length: number) => {
+	if (length === 0) {
+		return 0;
+	}
+
+	return Math.min(Math.max(index, 0), length - 1);
+};
+
 /**
  * Vegas核心状态管理钩子
  * @param initialSlide
@@ -19,8 +40,6 @@ export const useVegasState = (
 	loop: boolean,
 	shuffle: boolean,
 	isTransitioning: boolean,
-	firstTransition: string | null,
-	firstTransitionDuration: number,
 	log: Logger,
 	onWalk?: () => void
 ) => {
@@ -31,32 +50,31 @@ export const useVegasState = (
 	const [visibleSlides, setVisibleSlides] = useState([initialSlide]);
 	const [isFirstTransition, setIsFirstTransition] = useState(true);
 
-	// 初始化顺序
+	// 初始化或同步顺序
 	useEffect(() => {
-		const order = Array.from({length: slides.length}, (_, i) => i);
-		if (shuffle) {
-			for (let i = order.length - 1; i > 0; i--) {
-				const j = Math.floor(Math.random() * (i + 1));
-				[order[i], order[j]] = [order[j], order[i]];
-			}
-			const initialSlideIndex = order[0];
-			setCurrentSlide(initialSlideIndex);
-			setVisibleSlides([initialSlideIndex]);
+		if (slides.length === 0) {
+			setSlideOrder([]);
 			setCurrentOrderIndex(0);
-			log("幻灯片随机排序完成:", order);
-
-			if (firstTransition) {
-				log(`设置第一个幻灯片的动画: ${firstTransition}`);
-				slides[order[0]].transition = firstTransition;
-				slides[order[0]].transitionDuration = firstTransitionDuration;
-			}
-		} else {
-			setCurrentSlide(initialSlide);
-			setVisibleSlides([initialSlide]);
-			setCurrentOrderIndex(initialSlide);
+			setVisibleSlides([]);
+			return;
 		}
+
+		const order = buildSlideOrder(slides.length, shuffle);
+		const normalizedInitialSlide = clampSlideIndex(initialSlide, slides.length);
+		const initialOrderIndex = shuffle ? order.indexOf(normalizedInitialSlide) : normalizedInitialSlide;
+		const nextOrderIndex = initialOrderIndex >= 0 ? initialOrderIndex : 0;
+		const nextSlideIndex = order[nextOrderIndex] ?? normalizedInitialSlide;
+
+		if (shuffle) {
+			log("幻灯片随机排序完成:", order);
+		}
+
 		setSlideOrder(order);
-	}, []);
+		setCurrentOrderIndex(nextOrderIndex);
+		setCurrentSlide(nextSlideIndex);
+		setVisibleSlides([nextSlideIndex]);
+		setIsFirstTransition(true);
+	}, [initialSlide, shuffle, slides.length, log]);
 
 	// 播放控制
 	const play = useCallback(() => {
@@ -71,23 +89,37 @@ export const useVegasState = (
 
 	// 切换到指定幻灯片
 	const goTo = useCallback((index: number) => {
-		if (index >= 0 && index < slides.length && !isTransitioning) {
-			log(`切换到幻灯片: ${index}`);
-			setVisibleSlides([index]);
-			setCurrentSlide(index);
-			onWalk?.();
-
-			if (isFirstTransition) {
-				setIsFirstTransition(false);
-			}
+		if (index < 0 || index >= slides.length || isTransitioning || index === currentSlide) {
+			return false;
 		}
-	}, [slides.length, isTransitioning, onWalk]);
+
+		log(`切换到幻灯片: ${index}`);
+		setVisibleSlides([index]);
+		setCurrentSlide(index);
+
+		const nextOrderIndex = slideOrder.indexOf(index);
+		if (nextOrderIndex >= 0) {
+			setCurrentOrderIndex(nextOrderIndex);
+		}
+
+		onWalk?.();
+
+		if (isFirstTransition) {
+			setIsFirstTransition(false);
+		}
+
+		return true;
+	}, [currentSlide, isFirstTransition, isTransitioning, log, onWalk, slideOrder, slides.length]);
 
 	// 下一页逻辑
 	const next = useCallback(() => {
 		if (isTransitioning) {
 			log("正在切换中,跳过本次切换");
-			return;
+			return false;
+		}
+
+		if (slideOrder.length === 0) {
+			return false;
 		}
 
 		let nextOrderIndex = currentOrderIndex + 1;
@@ -98,20 +130,23 @@ export const useVegasState = (
 			} else {
 				log("到达最后一张,停止播放");
 				pause();
-				return;
+				return false;
 			}
 		}
 
 		const nextSlideIndex = slideOrder[nextOrderIndex];
-		setCurrentOrderIndex(nextOrderIndex);
-		goTo(nextSlideIndex);
+		return goTo(nextSlideIndex);
 	}, [currentOrderIndex, slideOrder, isTransitioning, loop, goTo, pause]);
 
 	// 上一页逻辑
 	const previous = useCallback(() => {
 		if (isTransitioning) {
 			log("正在切换中,跳过本次切换");
-			return;
+			return false;
+		}
+
+		if (slideOrder.length === 0) {
+			return false;
 		}
 
 		let prevOrderIndex = currentOrderIndex - 1;
@@ -122,13 +157,12 @@ export const useVegasState = (
 			} else {
 				log("到达第一张,停止播放");
 				pause();
-				return;
+				return false;
 			}
 		}
 
 		const prevSlideIndex = slideOrder[prevOrderIndex];
-		setCurrentOrderIndex(prevOrderIndex);
-		goTo(prevSlideIndex);
+		return goTo(prevSlideIndex);
 	}, [currentOrderIndex, slideOrder, isTransitioning, loop, goTo, pause]);
 
 	return {

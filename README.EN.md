@@ -169,6 +169,7 @@ const slides = [
 | preload                   | boolean | false     | Enable resource preloading  |
 | preloadImage              | boolean | false     | Preload images              |
 | preloadImageBatch         | number  | 3         | Batch preload image count   |
+| preLoadImageBatch         | number  | 3         | Legacy prop name, prefer preloadImageBatch |
 | preloadVideo              | boolean | false     | Preload videos              |
 | showLoading               | boolean | false     | Show loading indicator      |
 | defaultBackground         | string  | undefined | Loading background image    |

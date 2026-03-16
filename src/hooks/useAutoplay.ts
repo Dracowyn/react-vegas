@@ -21,17 +21,19 @@ export const useAutoplay = (
 	log: Logger
 ) => {
 	useEffect(() => {
-		let timer: number;
-		if (isPlaying && !isTransitioning) {
-			const currentDelay = slides[currentSlide].delay || delay;
-			log(`设置自动播放定时器,延迟: ${currentDelay}ms`);
-			timer = window.setInterval(next, currentDelay);
+		if (!isPlaying || isTransitioning || !slides[currentSlide]) {
+			return;
 		}
+
+		const currentDelay = slides[currentSlide].delay || delay;
+		log(`设置自动播放定时器,延迟: ${currentDelay}ms`);
+		const timer = window.setTimeout(() => {
+			next();
+		}, currentDelay);
+
 		return () => {
-			if (timer) {
-				log("清理自动播放定时器");
-				clearInterval(timer);
-			}
+			log("清理自动播放定时器");
+			clearTimeout(timer);
 		};
-	}, [isPlaying, currentSlide, isTransitioning, next]);
+	}, [currentSlide, delay, isPlaying, isTransitioning, log, next, slides]);
 };

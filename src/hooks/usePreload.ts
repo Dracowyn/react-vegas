@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { SlideProps, Logger } from "../types";
 
 /**
@@ -23,14 +23,31 @@ export const usePreload = (
 	const [loading, setLoading] = useState(false);
 	const [loadProgress, setLoadProgress] = useState(0);
 	const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+	const preloadLinksRef = useRef<HTMLLinkElement[]>([]);
+
+	useEffect(() => {
+		return () => {
+			preloadLinksRef.current.forEach(link => {
+				link.remove();
+			});
+			preloadLinksRef.current = [];
+		};
+	}, []);
 
 	// 批量预加载图片
 	const batchPreloadImages = useCallback(async () => {
 		if (!preloadImage) return;
 
 		setLoading(true);
+		setLoadProgress(0);
 		const batchSize = preLoadImageBatch;
 		const imageSlides = slides.filter(slide => !slide.video);
+
+		if (imageSlides.length === 0) {
+			setLoadProgress(100);
+			setLoading(false);
+			return;
+		}
 
 		try {
 			for (let i = 0; i < imageSlides.length; i += batchSize) {
@@ -65,6 +82,10 @@ export const usePreload = (
 		if (!preloadVideo) return;
 
 		log("开始预加载视频资源");
+		preloadLinksRef.current.forEach(link => {
+			link.remove();
+		});
+		preloadLinksRef.current = [];
 
 		slides.forEach(slide => {
 			if (slide.video) {
@@ -74,6 +95,7 @@ export const usePreload = (
 					link.as = "video";
 					link.href = src;
 					document.head.appendChild(link);
+					preloadLinksRef.current.push(link);
 					log(`预加载视频: ${src}`);
 				});
 			}

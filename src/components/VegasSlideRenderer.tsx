@@ -6,6 +6,7 @@ interface VegasSlideRendererProps {
 	slide: SlideProps;
 	index: number;
 	isFirstTransition: boolean;
+	firstTransition: string | null;
 	firstTransitionDuration: number;
 	transitionDuration: number;
 	transition: string;
@@ -45,6 +46,7 @@ export const VegasSlideRenderer: FC<VegasSlideRendererProps> = ({
 	                                                                      slide,
 	                                                                      index,
 	                                                                      isFirstTransition,
+	                                                                      firstTransition,
 	                                                                      firstTransitionDuration,
 	                                                                      transitionDuration,
 	                                                                      transition,
@@ -59,27 +61,33 @@ export const VegasSlideRenderer: FC<VegasSlideRendererProps> = ({
 	                                                                      log,
 	                                                                      logError
                                                                       }) => {
-	const currentTransition = slide.transition || transition;
-	const style: CSSProperties = {
+	const mediaFit = slide.cover ?? cover ? "cover" : "contain";
+	const mediaPosition = `${slide.align || align} ${slide.valign || valign}`;
+	const currentTransition = isFirstTransition && firstTransition ? firstTransition : slide.transition || transition;
+	const surfaceStyle: CSSProperties = {
 		position: "absolute",
 		top: 0,
 		left: 0,
 		width: "100%",
 		height: "100%",
-		backgroundColor: slide.color || color || undefined,
-		objectFit: slide.cover ?? cover ? "cover" : "contain",
-		objectPosition: `${slide.align || align} ${slide.valign || valign}`
+		backgroundColor: slide.color || color || undefined
+	};
+	const videoStyle: CSSProperties = {
+		...surfaceStyle,
+		objectFit: mediaFit,
+		objectPosition: mediaPosition
 	};
 
-	const currentTransitionDurationValue = isFirstTransition ?
-		firstTransitionDuration : transitionDuration;
+	const currentTransitionDurationValue = isFirstTransition
+		? firstTransitionDuration
+		: slide.transitionDuration || transitionDuration;
 
 	const isImagePreloaded = preloadImage && loadedImages[slide.src];
 
 	const content = slide.video ? (
 		<video
 			key={index}
-			style={style}
+			style={videoStyle}
 			autoPlay
 			muted={slide.video.muted}
 			loop={slide.video.loop}
@@ -98,14 +106,13 @@ export const VegasSlideRenderer: FC<VegasSlideRendererProps> = ({
 		<div
 			key={index}
 			style={{
-				...style,
+				...surfaceStyle,
 				backgroundImage: `url(${slide.src})`,
-				backgroundSize: slide.cover ?? cover ? "cover" : "contain",
-				backgroundPosition: `${slide.align || align} ${slide.valign || valign}`,
+				backgroundSize: mediaFit,
+				backgroundPosition: mediaPosition,
 				backgroundRepeat: "no-repeat"
 			}}
-			onLoad={!isImagePreloaded ? () => {
-			} : undefined}
+			aria-hidden={!isImagePreloaded}
 			onError={() => {
 				logError(`图片加载失败: ${slide.src}`);
 			}}
