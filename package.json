@@ -30,20 +30,26 @@
   "scripts": {
     "build": "rslib build",
     "dev": "rslib build --watch",
-    "storybook": "storybook dev"
+    "storybook": "storybook dev",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@rsbuild/core": "^1.7.3",
     "@rsbuild/plugin-react": "^1.4.6",
     "@rslib/core": "^0.20.0",
     "@storybook/addon-docs": "^10.2.19",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",
+    "jsdom": "^29.0.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.0",
     "storybook": "^10.2.19",
     "storybook-addon-rslib": "^3.3.2",
     "storybook-react-rsbuild": "^3.3.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   },
   "peerDependencies": {
     "react": ">=17.0.0",
