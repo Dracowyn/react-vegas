@@ -227,6 +227,14 @@ vegasRef.current.next();    // Go to next slide
 vegasRef.current.previous(); // Go to previous slide
 ```
 
+When `autoplay={false}`, the component now renders the first slide immediately and keeps it paused for manual control scenarios.
+
+## Not Supported Yet
+
+- Custom transition registries: `transitionRegister`
+- Custom animation system hooks: `animation`, `animationRegister`
+- Keeping multiple slides mounted at once: `slidesToKeep`
+
 ## Browser Support
 
 - Chrome (latest)

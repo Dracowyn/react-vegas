@@ -1,4 +1,4 @@
-import React, {CSSProperties, FC} from "react";
+import React, {CSSProperties, FC, useEffect, useRef} from "react";
 import {motion} from "motion/react";
 import {SlideProps, Logger} from "../types";
 
@@ -17,8 +17,11 @@ interface VegasSlideRendererProps {
 	variants: any;
 	preloadImage: boolean;
 	loadedImages: Record<string, boolean>;
+	isMediaPlaying: boolean;
+	canAdvance: boolean;
 	next: () => void;
 	log: Logger;
+	logWarn: Logger;
 	logError: Logger;
 }
 
@@ -55,12 +58,16 @@ export const VegasSlideRenderer: FC<VegasSlideRendererProps> = ({
 	                                                                      valign,
 	                                                                      color,
 	                                                                      variants,
-	                                                                      preloadImage,
-	                                                                      loadedImages,
-	                                                                      next,
-	                                                                      log,
-	                                                                      logError
+	preloadImage,
+	loadedImages,
+	isMediaPlaying,
+	canAdvance,
+	next,
+	log,
+	logWarn,
+	logError
                                                                       }) => {
+	const videoRef = useRef<HTMLVideoElement>(null);
 	const mediaFit = slide.cover ?? cover ? "cover" : "contain";
 	const mediaPosition = `${slide.align || align} ${slide.valign || valign}`;
 	const currentTransition = isFirstTransition && firstTransition ? firstTransition : slide.transition || transition;
@@ -84,15 +91,34 @@ export const VegasSlideRenderer: FC<VegasSlideRendererProps> = ({
 
 	const isImagePreloaded = preloadImage && loadedImages[slide.src];
 
+	useEffect(() => {
+		if (!slide.video || !videoRef.current) {
+			return;
+		}
+
+		if (!isMediaPlaying) {
+			videoRef.current.pause();
+			return;
+		}
+
+		const playPromise = videoRef.current.play();
+		if (playPromise) {
+			playPromise.catch(error => {
+				logWarn(`视频播放被浏览器阻止: ${slide.src}`, error);
+			});
+		}
+	}, [isMediaPlaying, logWarn, slide.src, slide.video]);
+
 	const content = slide.video ? (
 		<video
+			ref={videoRef}
 			key={index}
 			style={videoStyle}
-			autoPlay
+			autoPlay={isMediaPlaying}
 			muted={slide.video.muted}
 			loop={slide.video.loop}
 			onEnded={() => {
-				if (!slide.video?.loop) {
+				if (!slide.video?.loop && canAdvance) {
 					log("视频播放结束,切换到下一张");
 					next();
 				}

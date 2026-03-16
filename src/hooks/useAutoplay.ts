@@ -25,7 +25,7 @@ export const useAutoplay = (
 			return;
 		}
 
-		const currentDelay = slides[currentSlide].delay || delay;
+		const currentDelay = slides[currentSlide].delay ?? delay;
 		log(`设置自动播放定时器,延迟: ${currentDelay}ms`);
 		const timer = window.setTimeout(() => {
 			next();

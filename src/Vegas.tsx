@@ -11,6 +11,7 @@ import {usePreload} from "./hooks/usePreload";
 import {useAnimationVariants} from "./hooks/useAnimationVariants";
 import {useVegasState} from "./hooks/useVegasState";
 import {useAutoplay} from "./hooks/useAutoplay";
+import {useVegasLifecycle} from "./hooks/useVegasLifecycle";
 import {useVisibilityChange} from "./hooks/useVisibilityChange";
 
 
@@ -53,25 +54,35 @@ export const Vegas = forwardRef<{
 		onWalk
 	} = props;
 
-	// 状态管理
 	const [isTransitioning, setIsTransitioning] = useState(false);
-	const [showDefaultBg, setShowDefaultBg] = useState(true);
-	const defaultBackgroundTimerRef = useRef<number | null>(null);
-	const hideDefaultBackgroundTimerRef = useRef<number | null>(null);
 
-	// 日志函数
 	const {log, logWarn, logError} = useLogger(debug);
-	const containerRef = useRef<HTMLDivElement>(null);
+	const previousPhaseRef = useRef<string | null>(null);
 	const effectivePreloadImageBatch = preloadImageBatch ?? preLoadImageBatch ?? 3;
 
-	// 预加载资源
-	const {loading, loadProgress, loadedImages, batchPreloadImages} =
+	const {loading, loadProgress, loadedImages, preloadResources} =
 		usePreload(slides, preloadImage, preloadVideo, effectivePreloadImageBatch, log, logWarn, logError);
 
-	// 动画变体配置
 	const {variants} = useAnimationVariants(transitionDuration);
 
-	// 幻灯片状态管理
+	const {
+		phase,
+		isPlaying,
+		isFirstTransition,
+		shouldRenderSlides,
+		showDefaultBackground,
+		play: startPlayback,
+		pause: stopPlayback
+	} = useVegasLifecycle(
+		preload,
+		autoplay,
+		Boolean(defaultBackground),
+		defaultBackgroundDuration,
+		firstTransitionDuration,
+		preloadResources,
+		log
+	);
+
 	const vegasState = useVegasState(
 		slide,
 		slides,
@@ -79,18 +90,14 @@ export const Vegas = forwardRef<{
 		shuffle,
 		isTransitioning,
 		log,
-		onWalk
+		onWalk,
+		stopPlayback
 	);
 
 	const {
 		currentSlide,
-		isPlaying,
-		setIsPlaying,
+		currentOrderIndex,
 		visibleSlides,
-		isFirstTransition,
-		setIsFirstTransition,
-		play: statePlay,
-		pause: statePause,
 		next: stateNext,
 		previous: statePrevious,
 	} = vegasState;
@@ -106,128 +113,46 @@ export const Vegas = forwardRef<{
 	const next = useCallback(() => startTransition(stateNext()), [startTransition, stateNext]);
 	const previous = useCallback(() => startTransition(statePrevious()), [startTransition, statePrevious]);
 
-	// 播放控制函
 	const play = useCallback(() => {
-		statePlay();
+		log("开始播放幻灯片");
+		startPlayback();
+	}, [log, startPlayback]);
 
-		if (isFirstTransition && showDefaultBg) {
-			logWarn("默认背景显示中，等待动画完成");
-			if (hideDefaultBackgroundTimerRef.current !== null) {
-				clearTimeout(hideDefaultBackgroundTimerRef.current);
-			}
-
-			hideDefaultBackgroundTimerRef.current = window.setTimeout(() => {
-				setShowDefaultBg(false);
-				log("默认背景隐藏");
-			}, transitionDuration);
-			setIsFirstTransition(false);
-		}
-
-		onPlay?.();
-	}, [isFirstTransition, log, logWarn, onPlay, showDefaultBg, statePlay, transitionDuration]);
-
-	// 暂停控制函数
 	const pause = useCallback(() => {
-		statePause();
-		onPause?.();
-	}, [statePause, onPause]);
+		log("暂停播放幻灯片");
+		stopPlayback();
+	}, [log, stopPlayback]);
 
-	// 自动播放逻辑
 	useAutoplay(isPlaying, isTransitioning, currentSlide, slides, delay, next, log);
-
-	// 页面可见性变化处理
 	useVisibilityChange(isPlaying, play, pause, log);
 
-	useEffect(() => {
-		setShowDefaultBg(Boolean(defaultBackground));
-	}, [defaultBackground]);
-
-	// 初始化
 	useEffect(() => {
 		log("Vegas组件开始初始化");
 		onInit?.();
 	}, [log, onInit]);
 
 	useEffect(() => {
-		let disposed = false;
+		const previousPhase = previousPhaseRef.current;
 
-		if (defaultBackgroundTimerRef.current !== null) {
-			clearTimeout(defaultBackgroundTimerRef.current);
-			defaultBackgroundTimerRef.current = null;
+		if (previousPhase !== phase) {
+			if (phase === "playing") {
+				onPlay?.();
+			}
+
+			if (phase === "paused" && previousPhase === "playing") {
+				onPause?.();
+			}
+
+			previousPhaseRef.current = phase;
 		}
-
-		if (!preload) {
-			setIsPlaying(false);
-			if (defaultBackground) {
-				log(`存在默认背景，关闭自动播放`);
-				log(`设置默认背景: ${defaultBackground}`);
-				log(`设置默认背景显示定时器，延迟: ${defaultBackgroundDuration}ms`);
-				defaultBackgroundTimerRef.current = window.setTimeout(() => {
-					if (!disposed && autoplay) {
-						log("默认背景显示完成，开始自动播放");
-						play();
-					}
-				}, defaultBackgroundDuration);
-			} else if (autoplay) {
-				play();
-			}
-
-			return () => {
-				disposed = true;
-				if (defaultBackgroundTimerRef.current !== null) {
-					clearTimeout(defaultBackgroundTimerRef.current);
-					defaultBackgroundTimerRef.current = null;
-				}
-			};
-		}
-
-		log("开始预加载资源");
-		setIsPlaying(false);
-		batchPreloadImages().then(() => {
-			if (disposed) {
-				return;
-			}
-
-			if (defaultBackground) {
-				log(`存在默认背景，关闭自动播放`);
-				log(`设置默认背景: ${defaultBackground}`);
-				log(`设置默认背景显示定时器，延迟: ${defaultBackgroundDuration}ms`);
-				defaultBackgroundTimerRef.current = window.setTimeout(() => {
-					if (!disposed && autoplay) {
-						log("默认背景显示完成，开始自动播放");
-						play();
-					}
-				}, defaultBackgroundDuration);
-			} else if (autoplay) {
-				play();
-			}
-		});
-
-		return () => {
-			disposed = true;
-			if (defaultBackgroundTimerRef.current !== null) {
-				clearTimeout(defaultBackgroundTimerRef.current);
-				defaultBackgroundTimerRef.current = null;
-			}
-		};
-	}, [autoplay, batchPreloadImages, defaultBackground, defaultBackgroundDuration, log, pause, play, preload, setIsPlaying]);
+	}, [onPause, onPlay, phase]);
 
 	useEffect(() => {
 		return () => {
 			log("Vegas组件卸载");
-			pause();
-
-			if (defaultBackgroundTimerRef.current !== null) {
-				clearTimeout(defaultBackgroundTimerRef.current);
-			}
-
-			if (hideDefaultBackgroundTimerRef.current !== null) {
-				clearTimeout(hideDefaultBackgroundTimerRef.current);
-			}
 		};
-	}, [log, pause]);
+	}, [log]);
 
-	// 动画结束处理
 	useEffect(() => {
 		if (isTransitioning) {
 			const timer = setTimeout(() => {
@@ -236,9 +161,8 @@ export const Vegas = forwardRef<{
 			}, transitionDuration);
 			return () => clearTimeout(timer);
 		}
-	}, [isTransitioning, transitionDuration]);
+	}, [isTransitioning, log, transitionDuration]);
 
-	// 渲染幻灯片
 	const renderSlide = useCallback((index: number) => {
 		try {
 			const slide = slides[index];
@@ -263,8 +187,11 @@ export const Vegas = forwardRef<{
 					variants={variants}
 					preloadImage={preloadImage}
 					loadedImages={loadedImages}
+					isMediaPlaying={phase !== "paused"}
+					canAdvance={phase === "playing"}
 					next={next}
 					log={log}
+					logWarn={logWarn}
 					logError={logError}
 				/>
 			);
@@ -273,10 +200,8 @@ export const Vegas = forwardRef<{
 			return null;
 		}
 	}, [align, color, cover, firstTransition, firstTransitionDuration, isFirstTransition,
-		loadedImages, log, logError, next, preloadImage, slides, transition, transitionDuration, valign, variants]);
+		loadedImages, log, logError, logWarn, next, phase, preloadImage, slides, transition, transitionDuration, valign, variants]);
 
-
-	// 暴露组件实例方法
 	useImperativeHandle(ref, () => ({
 		previous,
 		next,
@@ -284,7 +209,6 @@ export const Vegas = forwardRef<{
 		pause
 	}));
 
-	// Props 验证
 	if (slides.length === 0) {
 		logError("幻灯片数组不能为空");
 		return null;
@@ -294,10 +218,8 @@ export const Vegas = forwardRef<{
 		logWarn("transitionDuration 应该大于 0");
 	}
 
-	// 渲染组件
 	return (
 		<div
-			ref={containerRef}
 			style={{
 				position: "relative",
 				width: "100%",
@@ -307,14 +229,13 @@ export const Vegas = forwardRef<{
 			}}
 		>
 			{/* 默认背景图层 */}
-			{defaultBackground && showDefaultBg && (
+			{defaultBackground && showDefaultBackground && (
 				<VegasDefaultBackground
-					backgroundUrl={defaultBackground.toString()}
+					backgroundUrl={defaultBackground}
 				/>
 			)}
 
-			{/* 渲染幻灯片 */}
-			{isPlaying && (
+			{shouldRenderSlides && (
 				<VegasSlide
 					visibleSlides={visibleSlides}
 					renderSlide={renderSlide}
@@ -327,9 +248,10 @@ export const Vegas = forwardRef<{
 			)}
 
 			{/* 进度条 */}
-			{timer && isPlaying && (
+			{timer && shouldRenderSlides && (
 				<VegasTimer
-					currentOrderIndex={vegasState.currentOrderIndex} totalSlides={slides.length}
+					currentOrderIndex={currentOrderIndex}
+					totalSlides={slides.length}
 				/>
 			)}
 

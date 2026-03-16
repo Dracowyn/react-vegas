@@ -21,12 +21,8 @@ export interface VegasProps {
 	firstTransitionDuration?: number;     // 第一次切换动画持续时间
 	transition?: string;                  // 切换动画类型
 	transitionDuration?: number;          // 切换动画持续时间
-	transitionRegister?: string[];        // 自定义切换动画注册
-	animation?: string | null;            // 幻灯片动画类型
-	animationRegister?: string[];         // 自定义幻灯片动画注册
-	slidesToKeep?: number;                // 保持的幻灯片数量
-	defaultBackground?: string | object;   // 默认背景图
-	defaultBackgroundDuration?: number;    // 默认背景图与第一张幻灯片间隔时间
+	defaultBackground?: string;           // 默认背景图
+	defaultBackgroundDuration?: number;   // 默认背景图与第一张幻灯片间隔时间
 	debug?: boolean;                      // 是否启用日志
 	slides: Array<SlideProps>;
 	onInit?: () => void;                  // 初始化回调
@@ -52,3 +48,11 @@ export interface SlideProps {
 }
 
 export type Logger = (message: string, ...args: unknown[]) => void;
+
+export type VegasPhase =
+	| "idle"
+	| "preloading"
+	| "showingDefaultBackground"
+	| "firstSlide"
+	| "playing"
+	| "paused";

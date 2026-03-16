@@ -206,6 +206,14 @@ vegasRef.current.next();        // 下一张
 vegasRef.current.previous();    // 上一张
 ```
 
+`autoplay={false}` 时组件会立即渲染首张幻灯片，并保持暂停状态，适合手动控制场景。
+
+## 暂不支持
+
+- 自定义过渡注册：`transitionRegister`
+- 自定义动画系统：`animation`、`animationRegister`
+- 同时保留多张可见幻灯片：`slidesToKeep`
+
 ## 浏览器支持
 
 - Chrome (最新版)
