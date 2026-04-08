@@ -3,6 +3,7 @@ import { Logger } from "../types";
 
 /**
  * 页面可见性变化钩子
+ * @param isPlaying
  * @param play
  * @param pause
  * @param log
@@ -13,21 +14,31 @@ export const useVisibilityChange = (
 	pause: () => void,
 	log: Logger
 ) => {
+	const isPlayingRef = useRef(isPlaying);
 	const shouldResumeRef = useRef(false);
+	const playRef = useRef(play);
+	const pauseRef = useRef(pause);
+	const logRef = useRef(log);
 
 	useEffect(() => {
-		shouldResumeRef.current = isPlaying;
+		isPlayingRef.current = isPlaying;
 	}, [isPlaying]);
+
+	useEffect(() => {
+		playRef.current = play;
+		pauseRef.current = pause;
+		logRef.current = log;
+	}, [play, pause, log]);
 
 	useEffect(() => {
 		const handleVisibilityChange = () => {
 			if (document.hidden) {
-				shouldResumeRef.current = isPlaying;
-				log("页面隐藏，暂停播放幻灯片");
-				pause();
+				shouldResumeRef.current = isPlayingRef.current;
+				logRef.current("页面隐藏，暂停播放幻灯片");
+				pauseRef.current();
 			} else if (shouldResumeRef.current) {
-				log("页面可见，继续播放幻灯片");
-				play();
+				logRef.current("页面可见，继续播放幻灯片");
+				playRef.current();
 			}
 		};
 
@@ -35,5 +46,5 @@ export const useVisibilityChange = (
 		return () => {
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
-	}, [isPlaying, log, pause, play]);
+	}, []);
 };

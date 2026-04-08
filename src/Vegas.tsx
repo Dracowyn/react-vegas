@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef} from "react";
-import {VegasProps} from "./types";
+import {VegasHandle, VegasProps} from "./types";
 import {VegasLoader} from "./components/VegasLoader";
 import {VegasTimer} from "./components/VegasTimer";
 import {VegasOverlay} from "./components/VegasOverlay";
@@ -16,12 +16,7 @@ import {useVisibilityChange} from "./hooks/useVisibilityChange";
 
 
 // Vegas主组件
-export const Vegas = forwardRef<{
-	previous: () => void;
-	next: () => void;
-	play: () => void;
-	pause: () => void;
-} | null, VegasProps>((props, ref) => {
+export const Vegas = forwardRef<VegasHandle | null, VegasProps>((props, ref) => {
 	const {
 		slide = 0,
 		delay = 5000,
@@ -46,6 +41,8 @@ export const Vegas = forwardRef<{
 		transitionDuration = 1000,
 		defaultBackground,
 		defaultBackgroundDuration = 3000,
+		loadingText,
+		overlayColor,
 		debug = false,
 		slides,
 		onInit,
@@ -173,6 +170,7 @@ export const Vegas = forwardRef<{
 
 			return (
 				<VegasSlideRenderer
+					key={slide.src}
 					slide={slide}
 					index={index}
 					isFirstTransition={isFirstTransition}
@@ -244,7 +242,7 @@ export const Vegas = forwardRef<{
 
 			{/* 遮罩层 */}
 			{overlay && (
-				<VegasOverlay/>
+				<VegasOverlay overlayColor={overlayColor}/>
 			)}
 
 			{/* 进度条 */}
@@ -257,7 +255,7 @@ export const Vegas = forwardRef<{
 
 			{/* 加载指示器 */}
 			{showLoading && loading && (
-				<VegasLoader loadProgress={loadProgress}/>
+				<VegasLoader loadProgress={loadProgress} loadingText={loadingText}/>
 			)}
 		</div>
 	);

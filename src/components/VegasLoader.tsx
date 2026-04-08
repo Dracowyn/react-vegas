@@ -2,15 +2,18 @@ import {FC} from "react";
 
 interface VegasLoaderProps {
 	loadProgress: number;
+	loadingText?: string;
 }
 
 /**
  * 加载指示器组件
  * @param loadProgress
+ * @param loadingText
  * @constructor
  */
 export const VegasLoader: FC<VegasLoaderProps> = ({
-	                                                  loadProgress
+	                                                  loadProgress,
+	                                                  loadingText = "Loading..."
                                                   }) => {
 	return (
 		<div style={{
@@ -25,7 +28,7 @@ export const VegasLoader: FC<VegasLoaderProps> = ({
 			padding: "20px",
 			borderRadius: "8px"
 		}}>
-			<div>加载中... {loadProgress}%</div>
+			<div>{loadingText} {loadProgress}%</div>
 			<div style={{
 				width: "200px",
 				height: "5px",

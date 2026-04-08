@@ -75,7 +75,7 @@ export const usePreload = (
 		} finally {
 			setLoading(false);
 		}
-	}, [slides, preloadImage, preLoadImageBatch, log, logWarn, logError]);
+	}, [slides, preloadImage, preLoadImageBatch, logWarn, logError]);
 
 	// 预加载视频资源
 	const preloadVideoResources = useCallback(() => {

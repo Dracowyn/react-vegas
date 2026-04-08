@@ -1,5 +1,6 @@
 import {FC} from "react";
 import {motion} from "motion/react";
+import {sanitizeCssUrl} from "../utils/sanitizeUrl";
 
 interface VegasDefaultBackgroundProps {
 	backgroundUrl: string;
@@ -22,7 +23,7 @@ export const VegasDefaultBackground: FC<VegasDefaultBackgroundProps> = ({
 				left: 0,
 				width: "100%",
 				height: "100%",
-				backgroundImage: `url(${backgroundUrl})`,
+				backgroundImage: sanitizeCssUrl(backgroundUrl),
 				backgroundSize: "cover",
 				backgroundPosition: "center",
 				zIndex: 0

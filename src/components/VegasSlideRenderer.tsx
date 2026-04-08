@@ -1,6 +1,8 @@
-import React, {CSSProperties, FC, useEffect, useRef} from "react";
+import {CSSProperties, FC, useEffect, useRef} from "react";
 import {motion} from "motion/react";
 import {SlideProps, Logger} from "../types";
+import {VegasVariants} from "../hooks/useAnimationVariants";
+import {sanitizeCssUrl} from "../utils/sanitizeUrl";
 
 interface VegasSlideRendererProps {
 	slide: SlideProps;
@@ -14,7 +16,7 @@ interface VegasSlideRendererProps {
 	align: string;
 	valign: string;
 	color: string | null;
-	variants: any;
+	variants: VegasVariants;
 	preloadImage: boolean;
 	loadedImages: Record<string, boolean>;
 	isMediaPlaying: boolean;
@@ -129,14 +131,14 @@ export const VegasSlideRenderer: FC<VegasSlideRendererProps> = ({
 			))}
 		</video>
 	) : (
-		<div
+		<img
 			key={index}
+			src={slide.src}
+			alt=""
 			style={{
 				...surfaceStyle,
-				backgroundImage: `url(${slide.src})`,
-				backgroundSize: mediaFit,
-				backgroundPosition: mediaPosition,
-				backgroundRepeat: "no-repeat"
+				objectFit: mediaFit,
+				objectPosition: mediaPosition,
 			}}
 			aria-hidden={!isImagePreloaded}
 			onError={() => {
@@ -145,13 +147,10 @@ export const VegasSlideRenderer: FC<VegasSlideRendererProps> = ({
 		/>
 	);
 
-	const variant = variants[currentTransition as keyof typeof variants] || variants.fade;
-
-	log(`渲染幻灯片: ${slide.src}, 动画: ${currentTransition}, 持续时间: ${currentTransitionDurationValue}ms`);
+	const variant = variants[currentTransition] || variants.fade;
 
 	return (
 		<motion.div
-			key={slide.src}
 			initial="exit"
 			animate="enter"
 			exit="exit"

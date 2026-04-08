@@ -16,6 +16,7 @@ const slides = [
 ];
 
 const findSlideBySource = (container: HTMLElement, source: string) =>
+	container.querySelector(`img[src="${source}"]`) ??
 	Array.from(container.querySelectorAll("div")).find(node =>
 		(node as HTMLDivElement).style.backgroundImage.includes(source)
 	);

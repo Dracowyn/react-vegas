@@ -6,6 +6,7 @@ export interface VegasProps {
 	preload?: boolean;                // 是否预加载资源
 	preloadImage?: boolean;           // 是否预加载图片
 	preloadImageBatch?: number;       // 批量预加载图片数量
+	/** @deprecated 使用 `preloadImageBatch` 代替 */
 	preLoadImageBatch?: number;       // 批量预加载图片数量
 	preloadVideo?: boolean;           // 是否预加载视频
 	showLoading?: boolean;            // 是否显示加载指示器
@@ -23,6 +24,8 @@ export interface VegasProps {
 	transitionDuration?: number;          // 切换动画持续时间
 	defaultBackground?: string;           // 默认背景图
 	defaultBackgroundDuration?: number;   // 默认背景图与第一张幻灯片间隔时间
+	loadingText?: string;                 // 加载中文案，默认 "Loading..."
+	overlayColor?: string;                // 遮罩层颜色，默认 "rgba(0,0,0,0.3)"
 	debug?: boolean;                      // 是否启用日志
 	slides: Array<SlideProps>;
 	onInit?: () => void;                  // 初始化回调
@@ -45,6 +48,13 @@ export interface SlideProps {
 		muted?: boolean;               // 是否静音
 		loop?: boolean;                // 是否循环播放
 	};
+}
+
+export interface VegasHandle {
+	previous: () => void;
+	next: () => void;
+	play: () => void;
+	pause: () => void;
 }
 
 export type Logger = (message: string, ...args: unknown[]) => void;
