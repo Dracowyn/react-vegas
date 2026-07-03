@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{20} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Testcontainers 自身日志较吵，压到 WARN；容器日志由测试按需读取 -->
+    <logger name="org.testcontainers" level="WARN"/>
+    <logger name="tc" level="WARN"/>
+    <logger name="com.github.dockerjava" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

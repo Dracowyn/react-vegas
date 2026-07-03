@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>cc.coopersoft</groupId>
+    <artifactId>keycloak-phone-provider-parent</artifactId>
+    <version>2.0.0</version>
+  </parent>
+
+  <artifactId>keycloak-phone-provider-it</artifactId>
+  <name>keycloak-phone-provider integration tests</name>
+  <description>基于 Testcontainers 的集成测试：在真实 Keycloak 容器中部署 provider，验证 OTP 收发与持久层。</description>
+
+  <properties>
+    <!-- 集成测试专用，不产出 provider jar，无需安装/部署到仓库 -->
+    <maven.install.skip>true</maven.install.skip>
+    <maven.deploy.skip>true</maven.deploy.skip>
+    <testcontainers-keycloak.version>4.2.1</testcontainers-keycloak.version>
+    <junit.version>5.11.4</junit.version>
+    <assertj.version>3.27.3</assertj.version>
+    <failsafe.version>3.5.2</failsafe.version>
+    <!-- 待部署到容器的 provider jar 目录（由父反应堆构建产出） -->
+    <providers.dir>${project.basedir}/../target/providers</providers.dir>
+    <keycloak.image>quay.io/keycloak/keycloak:${version.keycloak}</keycloak.image>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.github.dasniko</groupId>
+      <artifactId>testcontainers-keycloak</artifactId>
+      <version>${testcontainers-keycloak.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <!-- 排除其携带的 JUnit（6.x），统一使用下方的 JUnit 5，避免平台冲突 -->
+        <exclusion>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.testcontainers</groupId>
+          <artifactId>junit-jupiter</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.5.18</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- 集成测试用 failsafe（*IT），绑定到 integration-test / verify 阶段 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${failsafe.version}</version>
+        <configuration>
+          <systemPropertyVariables>
+            <providers.dir>${providers.dir}</providers.dir>
+            <keycloak.image>${keycloak.image}</keycloak.image>
+          </systemPropertyVariables>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

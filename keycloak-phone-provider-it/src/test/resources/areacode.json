@@ -1,0 +1,18 @@
+[
+  {
+    "areaCode": 86,
+    "countryCode": "CN",
+    "name": {
+      "en": "China",
+      "zh": "中国"
+    }
+  },
+  {
+    "areaCode": 1,
+    "countryCode": "US",
+    "name": {
+      "en": "United States",
+      "zh": "美国"
+    }
+  }
+]

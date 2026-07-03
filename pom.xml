@@ -109,4 +109,15 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- 集成测试（Testcontainers + 真实 Keycloak 容器），需要 Docker。
+             默认不启用，避免影响常规的 provider 构建；用 `mvn -Pit verify` 运行。 -->
+        <profile>
+            <id>it</id>
+            <modules>
+                <module>keycloak-phone-provider-it</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>
