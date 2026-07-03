@@ -132,7 +132,7 @@ public class MessageSendResult {
      */
     public long getResendExpiresTime() {
         return this.resendExpires != null ?
-            java.time.ZoneId.systemDefault().getRules().getOffset(this.resendExpires).getTotalSeconds() : 0;
+            this.resendExpires.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : 0;
     }
 
     /**
@@ -164,6 +164,6 @@ public class MessageSendResult {
      */
     public long getExpiresTime() {
         return this.expires != null ?
-            java.time.ZoneId.systemDefault().getRules().getOffset(this.expires).getTotalSeconds() : 0;
+            this.expires.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : 0;
     }
 }

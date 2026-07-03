@@ -235,8 +235,8 @@ public class TokenCodeResource {
     @Produces(APPLICATION_JSON)
     public Response getResendExpire(@QueryParam(PhoneConstants.FIELD_AREA_CODE) String areaCode,
                                     @QueryParam(PhoneConstants.FIELD_PHONE_NUMBER) String phoneNumberStr) {
-        PhoneNumber phoneNumber = new PhoneNumber(areaCode + phoneNumberStr);
-        
+        PhoneNumber phoneNumber = new PhoneNumber(areaCode, phoneNumberStr);
+
         if (phoneNumber.isEmpty()) {
             return ResponseBuilder.error(ErrorCode.PHONE_NUMBER_REQUIRED);
         }
