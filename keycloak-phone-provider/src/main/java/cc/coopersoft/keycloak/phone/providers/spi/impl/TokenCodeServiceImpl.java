@@ -12,7 +12,6 @@ import cc.coopersoft.keycloak.phone.providers.spi.TokenCodeService;
 import cc.coopersoft.keycloak.phone.utils.PhoneNumber;
 import cc.coopersoft.keycloak.phone.utils.UserUtils;
 import org.jboss.logging.Logger;
-import org.jetbrains.annotations.NotNull;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.credential.CredentialProvider;
@@ -69,7 +68,6 @@ public class TokenCodeServiceImpl implements TokenCodeService {
         }
     }
 
-    @NotNull
     private static TokenCodeRepresentation getTokenCodeRepresentation(TokenCodeEntity entity) {
         TokenCodeRepresentation tokenCodeRepresentation = new TokenCodeRepresentation();
 
@@ -213,8 +211,7 @@ public class TokenCodeServiceImpl implements TokenCodeService {
     @Override
     public void setUserPhoneNumberByCode(UserModel user, PhoneNumber phoneNumber, String code) {
         TokenCodeType tokenCodeType = TokenCodeType.VERIFY;
-        logger.info(String.format("valid %s , phone: %s, code: %s", tokenCodeType, phoneNumber.getFullPhoneNumber(),
-                code));
+        logger.info(String.format("valid %s , phone: %s", tokenCodeType, phoneNumber.getFullPhoneNumber()));
 
         TokenCodeRepresentation tokenCode = currentProcess(phoneNumber, tokenCodeType);
         if (tokenCode == null) {
@@ -274,7 +271,8 @@ public class TokenCodeServiceImpl implements TokenCodeService {
                     .getStoredCredentialsByTypeStream(PhoneOtpCredentialModel.TYPE).findFirst();
             if (credentialOptional.isPresent()) {
                 CredentialModel credential = credentialOptional.get();
-                credential.setCredentialData("{\"phoneNumber\":\"" + user.getFirstAttribute("phoneNumber") + "\"}");
+                PhoneNumber phoneNumber = new PhoneNumber(user.getFirstAttribute("phoneNumber"));
+                credential.setCredentialData(PhoneOtpCredentialModel.create(phoneNumber).getCredentialData());
                 PhoneOtpCredentialModel credentialModel = PhoneOtpCredentialModel.createFromCredentialModel(credential);
                 user.credentialManager().updateStoredCredential(credentialModel);
             }

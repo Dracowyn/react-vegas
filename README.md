@@ -1,16 +1,16 @@
-# Keycloak (Quarkus 25.x.x) Phone Provider
+# Keycloak (Quarkus 26.x.x) Phone Provider
 
 此项目原作者并不是我，项目源地址：https://github.com/cooperlyt/keycloak-phone-provider
 
 我们团队是在：https://github.com/cooperlyt/keycloak-phone-provider/tree/10.0.2
 
-也就是使用Keycloak的11.0.3版本作为基线开发的版本基础上为了做定制化需求做了二开，加入了人机验证geetest，国际区号选择功能并使其兼容了Keycloak
-25版本。
+也就是使用Keycloak的11.0.3版本作为基线开发的版本基础上为了做定制化需求做了二开，加入了人机验证geetest、腾讯云验证码，国际区号选择功能，并将基线升级至
+Keycloak 26 版本。
 
 本插件运行环境要求：
 
-+ Keycloak 25.x.x
-+ Java 21
++ Keycloak 26.x.x（当前基线 26.6.4）
++ Java 17 或 21（编译目标为 Java 17，推荐运行在 21）
 
 ## 项目前端
 
@@ -379,6 +379,21 @@ grant_type=password&phone_number=$PHONE_NUMBER&code=$VERIFICATION_CODE&client_id
 | INTERNAL_ERROR             | 500     | 服务器内部错误      |
 
 ### 版本更新说明
+
+**Keycloak 26 升级（当前）**:
+
+- ✅ 基线从 Keycloak 25.x 升级到 26.6.4
+- ✅ 清理 26.x 弃用 API：`AuthResult.getUser()` → `user()`、`JsonNode.fields()` → `properties()`
+- ✅ 持久层由 `java.util.Date` 迁移到 `java.time.LocalDateTime`，移除弃用的 `@Temporal`
+- ✅ 移除 `CaptchaConfigResponse` 的历史兼容字段，统一返回 `captchaAppId`
+- 🔒 修复验证码明文被写入 info 日志与 Keycloak 事件详情的安全问题
+- 🐞 修复凭据数据（credentialData）手工拼接 JSON 导致漏写 `areaCode`、结构错误的问题
+- 🐞 修复腾讯云 `captchaType` 被硬编码 `9` 覆盖、配置项不生效的问题
+- 🧵 修复区号缓存、极验服务状态、`JsonUtils` 的线程安全问题
+- ⬆️ 升级依赖：BouncyCastle、阿里云 SDK、org.json、Lombok 等
+- 🪶 移除 okhttp 依赖（改用 JDK 原生解析 `redirect_uri` 查询参数），核心 jar 由约 3.1MB 缩减至约 156KB
+
+> ⚠️ 说明：以上改动已通过编译验证；User Profile 声明式属性、Liquibase changelog 等**运行时**行为建议在目标环境实测后再上生产。
 
 **v2.0.0**:
 

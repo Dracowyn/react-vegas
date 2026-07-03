@@ -44,7 +44,7 @@ public class PhoneLocation {
 
         try {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            Map<String, Object> responseMap = new JsonUtils().decode(response.body());
+            Map<String, Object> responseMap = JsonUtils.decode(response.body());
 
             String isp = extractIsp(responseMap);
             logger.info("Phone number: " + userPhoneNumber + " ISP: " + isp + " IP address: " + ip + " location data: " + responseMap);

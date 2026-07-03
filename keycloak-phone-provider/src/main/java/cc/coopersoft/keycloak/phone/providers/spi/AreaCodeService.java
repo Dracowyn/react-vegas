@@ -24,30 +24,31 @@ public class AreaCodeService implements Provider {
     private static final Logger logger = Logger.getLogger(AreaCodeService.class);
     public final KeycloakSession session;
     public final ConfigService config;
-    public static List<AreaCodeData> areaCodeList;
+    private static volatile List<AreaCodeData> areaCodeList;
 
     public AreaCodeService(KeycloakSession session){
         this.session = session;
-        
+
         this.config = session.getProvider(ConfigService.class);
     }
 
     public List<AreaCodeData> getAreaCodeList() throws IOException {
-        if(areaCodeList != null) {
-            return areaCodeList;
+        List<AreaCodeData> cached = areaCodeList;
+        if (cached != null) {
+            return cached;
         }
 
-        File configFile = new File(config.getAreaCodeConfig());
-        InputStream fs = Files.newInputStream(configFile.toPath());
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            JavaType listType = objectMapper.getTypeFactory().constructParametricType(List.class, AreaCodeData.class);
-            areaCodeList = objectMapper.readValue(fs, listType);
-            fs.close();
-            return areaCodeList;
-        } catch (IOException ex){
-            fs.close();
-            throw ex;
+        synchronized (AreaCodeService.class) {
+            if (areaCodeList != null) {
+                return areaCodeList;
+            }
+            File configFile = new File(config.getAreaCodeConfig());
+            try (InputStream fs = Files.newInputStream(configFile.toPath())) {
+                ObjectMapper objectMapper = new ObjectMapper();
+                JavaType listType = objectMapper.getTypeFactory().constructParametricType(List.class, AreaCodeData.class);
+                areaCodeList = objectMapper.readValue(fs, listType);
+                return areaCodeList;
+            }
         }
     }
 

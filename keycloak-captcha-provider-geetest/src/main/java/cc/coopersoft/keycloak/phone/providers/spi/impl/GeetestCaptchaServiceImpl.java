@@ -7,7 +7,6 @@ import lombok.Setter;
 import org.apache.commons.codec.digest.HmacAlgorithms;
 import org.apache.commons.codec.digest.HmacUtils;
 import org.jboss.logging.Logger;
-import org.jetbrains.annotations.NotNull;
 import org.keycloak.Config;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.services.managers.AuthenticationManager;
@@ -37,8 +36,10 @@ public class GeetestCaptchaServiceImpl implements CaptchaService {
     private static final String UNKNOWN_USER = "unknown";
     private static final String V4_API_DOMAIN = "https://gcaptcha4.geetest.com";
 
-    // 服务状态标志，1表示正常
-    private static int serverStatus = 1;
+    // 服务状态标志，1表示正常。
+    // 注意：极验3.0的 failback 状态本应按认证会话隔离，此处为跨请求共享的近似实现；
+    // volatile 仅保证可见性，无法消除并发用户间的竞争。极验3.0已不推荐使用。
+    private static volatile int serverStatus = 1;
 
     private final KeycloakSession session;
     @Setter
@@ -199,7 +200,6 @@ public class GeetestCaptchaServiceImpl implements CaptchaService {
      * @return 响应内容
      * @throws IOException 如果发生IO错误
      */
-    @NotNull
     private static String sendRequest(HttpURLConnection conn, StringBuilder postData) throws IOException {
         // 发送请求数据
         try (OutputStream os = conn.getOutputStream()) {

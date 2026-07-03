@@ -67,7 +67,6 @@ public class TencentCaptchaServiceImpl implements CaptchaService {
         String secretKey = config.get("secretKey");
         String captchaAppId = config.get("captchaAppId");
         String appSecretKey = config.get("appSecretKey");
-        long captchaType = 9;
 
         if (secretId == null || secretKey == null || captchaAppId == null || appSecretKey == null) {
             log.warn("腾讯云验证码配置不完整，跳过验证");
@@ -103,8 +102,8 @@ public class TencentCaptchaServiceImpl implements CaptchaService {
 
             // 构建请求
             DescribeCaptchaResultRequest request = new DescribeCaptchaResultRequest();
-            // CaptchaType是可选的，腾讯云会根据CaptchaAppId自动识别验证码类型
-            // 如果需要明确指定类型，可以配置captchaType参数
+            // CaptchaType是可选的，腾讯云会根据CaptchaAppId自动识别验证码类型。
+            // 仅当显式配置captchaType时才设置，避免用硬编码值覆盖自动识别结果。
             String captchaTypeStr = config.get("captchaType");
             if (captchaTypeStr != null) {
                 request.setCaptchaType(Long.parseLong(captchaTypeStr));
@@ -114,7 +113,6 @@ public class TencentCaptchaServiceImpl implements CaptchaService {
             request.setUserIp(userIp);
             request.setCaptchaAppId(Long.parseLong(captchaAppId));
             request.setAppSecretKey(appSecretKey);
-            request.setCaptchaType(captchaType);
 
             // 发送请求并获取响应
             DescribeCaptchaResultResponse response = client.DescribeCaptchaResult(request);

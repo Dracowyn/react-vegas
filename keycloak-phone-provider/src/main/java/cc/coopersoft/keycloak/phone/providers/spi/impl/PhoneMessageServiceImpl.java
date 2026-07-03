@@ -171,12 +171,11 @@ public class PhoneMessageServiceImpl implements PhoneMessageService {
 
         if (result.ok()) {
             getTokenCodeService().persistCode(token, type, result);
-            logger.info(String.format("Send %s SMS verification code: %s to %s over %s", type.getLabel(), token.getCode(), phoneNumber.getFullPhoneNumber(),
+            logger.info(String.format("Send %s SMS verification code to %s over %s", type.getLabel(), phoneNumber.getFullPhoneNumber(),
                     service));
 
-            // 记录短信发送成功事件
+            // 记录短信发送成功事件（不记录验证码明文，避免敏感信息落入事件日志）
             eventBuilder.detail("send_result", "success")
-                    .detail("verification_code", token.getCode())
                     .detail("expires_time", String.valueOf(result.getExpiresTime()))
                     .detail("resend_expires_time", String.valueOf(result.getResendExpiresTime()))
                     .success();

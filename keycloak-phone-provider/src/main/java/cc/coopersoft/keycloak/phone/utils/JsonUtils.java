@@ -8,29 +8,15 @@ import java.util.Map;
 
 /**
  * JSON工具类
+ *
+ * <p>{@link ObjectMapper} 在完成配置后是线程安全的，因此这里复用一个共享的静态实例，
+ * 避免每次调用都创建新的 mapper，也不再使用此前那个错误的“单例”实现。</p>
  */
-public class JsonUtils {
-    private static JsonUtils instance;
+public final class JsonUtils {
 
-    public ObjectMapper mapper;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /**
-     * 获取JSON工具类单例实例
-     *
-     * @return JSON工具类单例实例
-     */
-    public synchronized JsonUtils getInstance() {
-        if (instance == null) {
-            instance = new JsonUtils();
-        }
-        return instance;
-    }
-
-    /**
-     * JSON工具类构造方法
-     */
-    public JsonUtils() {
-        mapper = new ObjectMapper();
+    private JsonUtils() {
     }
 
     /**
@@ -40,15 +26,15 @@ public class JsonUtils {
      * @return 转换后的JSON字符串
      * @throws JsonProcessingException JSON转换过程异常时抛出
      */
-    public String encode(Map<String, Object> map) throws JsonProcessingException {
-        return mapper.writeValueAsString(map);
+    public static String encode(Map<String, Object> map) throws JsonProcessingException {
+        return MAPPER.writeValueAsString(map);
     }
 
     /**
      * 将JSON字符串转换为Map对象
      */
-    public Map<String, Object> decode(String json) throws JsonProcessingException {
-        return mapper.readValue(json, new TypeReference<>() {
+    public static Map<String, Object> decode(String json) throws JsonProcessingException {
+        return MAPPER.readValue(json, new TypeReference<>() {
         });
     }
 }
