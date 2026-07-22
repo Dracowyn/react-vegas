@@ -44,7 +44,13 @@ public class PhoneOrPasswordLoginForm extends AbstractUsernameFormAuthenticator 
         if (error != null) {
             form.setError(error);
         }
-        return makeForm(form);
+        // 回显表单前移除敏感字段，避免密码/验证码随隐藏表单原样回显给浏览器，
+        // 做法参考 Keycloak 官方 AbstractUsernameFormAuthenticator；这里对入参 formData 做防御性拷贝，不做原地修改。
+        MultivaluedMap<String, String> safeFormData = new MultivaluedHashMap<>(formData);
+        safeFormData.remove("password");
+        safeFormData.remove("password-confirm");
+        safeFormData.remove(PhoneConstants.FIELD_VERIFICATION_CODE);
+        return makeForm(form, safeFormData);
     }
 
     protected Response makeForm(LoginFormsProvider form) {

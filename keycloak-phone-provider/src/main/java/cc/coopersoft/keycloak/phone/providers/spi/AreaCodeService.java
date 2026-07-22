@@ -91,7 +91,7 @@ public class AreaCodeService implements Provider {
             } else {
                 int splitPos = languageCode.indexOf("-");
                 if(splitPos > 0) {
-                    String baseLanguageCode = languageCode.substring(0, splitPos - 1).toLowerCase(Locale.ROOT);
+                    String baseLanguageCode = languageCode.substring(0, splitPos).toLowerCase(Locale.ROOT);
                     if(countryNameMessages.containsKey(baseLanguageCode)){
                         return countryNameMessages.get(baseLanguageCode);
                     }

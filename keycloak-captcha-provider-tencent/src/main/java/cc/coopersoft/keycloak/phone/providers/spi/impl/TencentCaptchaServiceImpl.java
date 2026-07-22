@@ -20,18 +20,33 @@ import java.util.Optional;
 /**
  * 腾讯云验证码服务实现
  * 支持腾讯云验证码的验证和前端密钥获取
+ *
+ * <p>容灾票据（disaster ticket）说明：配套前端在腾讯验证码 JS SDK 加载失败时，
+ * 会在本地生成形如 {@code trerror_{errorCode}_{appId}_{timestamp}} 的容灾票据
+ * （前缀 {@code trerror_}；腾讯官方示例中也存在 {@code terror_} 前缀），
+ * 这类票据不是腾讯云签发的真实票据，无法也不应提交给 DescribeCaptchaResult 接口校验。
+ * 配置项 {@code allowDisasterTicket}（默认 true）控制识别到容灾票据后的处理策略：
+ * <ul>
+ *     <li>true（默认）：与腾讯官方容灾实践一致，直接放行，避免因验证码前端资源不可用而导致用户完全无法登录；
+ *     但这也意味着攻击者可以自行构造符合前缀规则的“容灾票据”绕过人机验证，需结合短信侧的每号码频控等风控措施评估风险。</li>
+ *     <li>false：严格模式，容灾票据一律拒绝；安全敏感的部署建议显式配置为 false。</li>
+ * </ul>
  */
 public class TencentCaptchaServiceImpl implements CaptchaService {
     private static final Logger log = Logger.getLogger(TencentCaptchaServiceImpl.class);
-    
+
     // 默认值
     private static final String DEFAULT_USER_ID = "guest";
     private static final String UNKNOWN_USER = "unknown";
     private static final String DEFAULT_ENDPOINT = "captcha.tencentcloudapi.com";
-    
+
     // 表单参数名
     private static final String PARAM_TICKET = "ticket";
     private static final String PARAM_RANDSTR = "randstr";
+
+    // 前端容灾票据前缀：JS SDK 加载失败时前端本地生成的兜底票据，无法通过腾讯云接口校验，需在此拦截识别
+    private static final String DISASTER_TICKET_PREFIX_TR = "trerror_";
+    private static final String DISASTER_TICKET_PREFIX_T = "terror_";
 
     private final KeycloakSession session;
     
@@ -84,6 +99,21 @@ public class TencentCaptchaServiceImpl implements CaptchaService {
 
         // 获取用户IP地址
         String userIp = session.getContext().getConnection().getRemoteAddr();
+
+        // 识别前端容灾票据（见类注释）：此类票据并非腾讯云签发，不能提交给 DescribeCaptchaResult 接口校验，
+        // 否则必然验证失败，容灾机制形同虚设。识别到后按 allowDisasterTicket 配置决定放行或拒绝。
+        if (ticket.startsWith(DISASTER_TICKET_PREFIX_TR) || ticket.startsWith(DISASTER_TICKET_PREFIX_T)) {
+            Boolean allowDisasterTicket = config.getBoolean("allowDisasterTicket", true);
+            if (allowDisasterTicket) {
+                log.warnf("检测到腾讯云验证码前端容灾票据，已按 allowDisasterTicket=true 放行: user=%s, ip=%s, ticket=%s",
+                        user, userIp, ticket);
+                return true;
+            } else {
+                log.warnf("检测到腾讯云验证码前端容灾票据，已按 allowDisasterTicket=false 拒绝: user=%s, ip=%s, ticket=%s",
+                        user, userIp, ticket);
+                return false;
+            }
+        }
 
         try {
             // 创建腾讯云API凭证

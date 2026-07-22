@@ -1,5 +1,6 @@
 package cc.coopersoft.keycloak.phone.providers.rest;
 
+import cc.coopersoft.keycloak.phone.credential.PhoneOtpCredentialModel;
 import cc.coopersoft.keycloak.phone.providers.constants.ErrorCode;
 import cc.coopersoft.keycloak.phone.providers.rest.util.ResponseBuilder;
 import cc.coopersoft.keycloak.phone.providers.spi.ConfigService;
@@ -11,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
+import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.managers.AppAuthManager;
@@ -58,12 +60,15 @@ public class VerificationCodeResource {
         try {
             JsonNode jsonObject = new ObjectMapper().readTree(reqBody);
 
-            return this.setUserPhoneNumber(jsonObject.get(PhoneConstants.FIELD_AREA_CODE).asText(),
-                    jsonObject.get(PhoneConstants.FIELD_PHONE_NUMBER).asText(),
-                    jsonObject.get(PhoneConstants.FIELD_VERIFICATION_CODE).asText());
+            // 使用path(...).asText(null)安全取值，避免字段缺失时NPE
+            String areaCode = jsonObject.path(PhoneConstants.FIELD_AREA_CODE).asText(null);
+            String phoneNumberStr = jsonObject.path(PhoneConstants.FIELD_PHONE_NUMBER).asText(null);
+            String code = jsonObject.path(PhoneConstants.FIELD_VERIFICATION_CODE).asText(null);
+
+            return this.setUserPhoneNumber(areaCode, phoneNumberStr, code);
         } catch (IOException e) {
             logger.error("解析JSON请求体失败", e);
-            return ResponseBuilder.serverError("请求格式错误");
+            return ResponseBuilder.error(ErrorCode.INVALID_REQUEST);
         }
     }
 
@@ -104,9 +109,14 @@ public class VerificationCodeResource {
             UserModel user = auth.user();
             getTokenCodeService().setUserPhoneNumberByCode(user, phoneNumber, code);
             return ResponseBuilder.noContent();
-        } catch (BadRequestException e) {
-            logger.error("设置用户手机号失败", e);
+        } catch (ForbiddenException e) {
+            // 验证码与预期值不匹配（常规客户端错误，warn级别即可）
+            logger.warn("设置用户手机号失败：验证码不正确: " + e.getMessage());
             return ResponseBuilder.error(ErrorCode.VERIFICATION_CODE_INVALID, e.getMessage());
+        } catch (BadRequestException e) {
+            // 不存在有效的验证码流程（已过期或未发起）
+            logger.warn("设置用户手机号失败：验证码已过期: " + e.getMessage());
+            return ResponseBuilder.error(ErrorCode.VERIFICATION_CODE_EXPIRED, e.getMessage());
         }
     }
 
@@ -120,16 +130,16 @@ public class VerificationCodeResource {
     @Produces(APPLICATION_JSON)
     @Consumes({APPLICATION_JSON, APPLICATION_FORM_URLENCODED})
     public Response unsetUserPhoneNumber() {
-        ConfigService config = session.getProvider(ConfigService.class);
-        
-        // 检查是否允许取消绑定
-        if (!config.isAllowUnset()) {
-            return ResponseBuilder.error(ErrorCode.PHONE_UNSET_NOT_ALLOWED);
-        }
-        
         // 验证用户是否登录
         if (auth == null) {
             return ResponseBuilder.error(ErrorCode.AUTHENTICATION_REQUIRED);
+        }
+
+        ConfigService config = session.getProvider(ConfigService.class);
+
+        // 检查是否允许取消绑定
+        if (!config.isAllowUnset()) {
+            return ResponseBuilder.error(ErrorCode.PHONE_UNSET_NOT_ALLOWED);
         }
 
         UserModel user = auth.user();
@@ -138,9 +148,18 @@ public class VerificationCodeResource {
         if (!user.isEmailVerified()) {
             return ResponseBuilder.error(ErrorCode.EMAIL_NOT_VERIFIED, "取消绑定手机号前需要先验证邮箱");
         }
-        
-        // 移除手机号属性
+
+        // 移除手机号相关属性
         user.removeAttribute("phoneNumber");
+        user.removeAttribute("phoneNumberVerified");
+
+        // 删除该用户的手机号OTP凭据
+        user.credentialManager()
+                .getStoredCredentialsByTypeStream(PhoneOtpCredentialModel.TYPE)
+                .map(CredentialModel::getId)
+                .toList()
+                .forEach(credentialId -> user.credentialManager().removeStoredCredentialById(credentialId));
+
         return ResponseBuilder.noContent();
     }
 }

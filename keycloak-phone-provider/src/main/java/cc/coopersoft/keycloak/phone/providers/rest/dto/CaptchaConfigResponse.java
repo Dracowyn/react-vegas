@@ -40,10 +40,4 @@ public class CaptchaConfigResponse {
      * 其他配置参数
      */
     private Map<String, Object> config;
-
-    /**
-     * 是否成功（兼容旧版本）
-     */
-    @Deprecated
-    private Integer success;
 }

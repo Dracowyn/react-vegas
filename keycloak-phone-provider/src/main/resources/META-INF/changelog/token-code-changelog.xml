@@ -4,4 +4,5 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
     <include file="META-INF/changelog/token-code-changelog-6.6-clean.xml"/>
     <include file="META-INF/changelog/token-code-changelog-6.6.xml"/>
+    <include file="META-INF/changelog/token-code-changelog-attempts.xml"/>
 </databaseChangeLog>

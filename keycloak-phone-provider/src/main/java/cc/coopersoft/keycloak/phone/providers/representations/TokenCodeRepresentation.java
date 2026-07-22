@@ -13,6 +13,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class TokenCodeRepresentation {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private String id;
     private String areaCode;
     private String phoneNumber;
@@ -36,8 +39,7 @@ public class TokenCodeRepresentation {
     }
 
     private static String generateTokenCode() {
-        SecureRandom secureRandom = new SecureRandom();
-        Integer code = secureRandom.nextInt(999_999);
+        int code = SECURE_RANDOM.nextInt(1_000_000);
         return String.format("%06d", code);
     }
 }

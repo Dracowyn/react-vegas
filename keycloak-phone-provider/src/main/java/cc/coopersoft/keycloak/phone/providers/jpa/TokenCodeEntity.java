@@ -18,7 +18,8 @@ import java.util.Objects;
                 name = "currentProcess",
                 query = "SELECT t FROM TokenCodeEntity t WHERE t.realmId = :realmId " +
                         "AND t.areaCode = :areaCode AND t.phoneNumber = :phoneNumber " +
-                        "AND t.expiresAt >= :now AND t.type = :type"
+                        "AND t.expiresAt >= :now AND t.type = :type " +
+                        "ORDER BY t.createdAt DESC"
         ),
         @NamedQuery(
                 name = "getAll",
@@ -67,6 +68,13 @@ public class TokenCodeEntity {
 
     @Column(name = "BY_WHOM")
     private String byWhom;
+
+    /**
+     * 验证码校验失败的累计次数，用于防爆破。
+     * 达到上限后该验证码记录会被作废，用户须重新发送。
+     */
+    @Column(name = "ATTEMPTS", nullable = false)
+    private Integer attempts = 0;
 
     @Override
     public boolean equals(Object o) {

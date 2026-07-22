@@ -3,6 +3,7 @@ package cc.coopersoft.keycloak.phone.providers.rest;
 import cc.coopersoft.keycloak.phone.providers.constants.ErrorCode;
 import cc.coopersoft.keycloak.phone.providers.constants.MessageSendResult;
 import cc.coopersoft.keycloak.phone.providers.constants.TokenCodeType;
+import cc.coopersoft.keycloak.phone.providers.rest.dto.ApiError;
 import cc.coopersoft.keycloak.phone.providers.rest.dto.ResendExpiresResponse;
 import cc.coopersoft.keycloak.phone.providers.rest.dto.SmsCodeResponse;
 import cc.coopersoft.keycloak.phone.providers.rest.util.ResponseBuilder;
@@ -30,6 +31,7 @@ import org.keycloak.services.managers.AuthenticationManager;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 import static jakarta.ws.rs.core.MediaType.APPLICATION_FORM_URLENCODED;
@@ -96,7 +98,7 @@ public class TokenCodeResource {
             return this.sendTokenCode(formData);
         } catch (IOException e) {
             logger.error("解析JSON请求体失败", e);
-            return ResponseBuilder.serverError("请求格式错误");
+            return ResponseBuilder.error(ErrorCode.INVALID_REQUEST);
         }
     }
 
@@ -118,10 +120,18 @@ public class TokenCodeResource {
             return ResponseBuilder.error(ErrorCode.PHONE_NUMBER_REQUIRED);
         }
 
-        // 验证人机验证码
-        if (!session.getProvider(CaptchaService.class).verify(formData, this.auth) &&
+        // 验证人机验证码（未部署任何 captcha 模块时 provider 为 null，跳过人机验证）
+        CaptchaService captchaService = session.getProvider(CaptchaService.class);
+        if (captchaService == null) {
+            logger.warn("未配置CaptchaService Provider，跳过人机验证");
+        } else if (!captchaService.verify(formData, this.auth) &&
                 !isTrustedClient(formData.getFirst("client_id"), formData.getFirst("client_secret"))) {
             return ResponseBuilder.error(ErrorCode.CAPTCHA_REQUIRED);
+        }
+
+        // 验证区号格式（必须为1-4位纯数字，避免后续解析为int时抛出异常）
+        if (!phoneNumber.getAreaCode().matches("\\d{1,4}")) {
+            return ResponseBuilder.error(ErrorCode.PHONE_NUMBER_INVALID);
         }
 
         // 验证区号
@@ -159,7 +169,17 @@ public class TokenCodeResource {
         }
 
         // 发送短信验证码
-        MessageSendResult result = session.getProvider(PhoneMessageService.class).sendTokenCode(phoneNumber, tokenCodeType);
+        MessageSendResult result;
+        try {
+            result = session.getProvider(PhoneMessageService.class).sendTokenCode(phoneNumber, tokenCodeType);
+        } catch (ForbiddenException e) {
+            // 一小时内发送次数超过上限（防滥用）
+            eventBuilder.detail("result", "failure")
+                    .detail("error_code", "SMS_SEND_LIMIT_EXCEEDED")
+                    .detail("error_message", e.getMessage())
+                    .error("SMS_SEND_LIMIT_EXCEEDED");
+            return ResponseBuilder.error(ErrorCode.SMS_SEND_LIMIT_EXCEEDED);
+        }
 
         if (result.ok()) {
             // 记录成功事件
@@ -181,7 +201,23 @@ public class TokenCodeResource {
                     .detail("error_message", result.getErrorMessage())
                     .error("SMS_SEND_FAILED");
 
-            // 返回错误响应
+            // 重发冷却中（errorCode: rateTime）
+            if (result.getStatus() == -2) {
+                if (result.getResendExpires() != null) {
+                    Map<String, Object> details = new HashMap<>();
+                    details.put("resendExpires", result.getResendExpiresTime());
+                    ApiError apiError = ApiError.from(ErrorCode.RESEND_TOO_SOON, details);
+                    return ResponseBuilder.error(ErrorCode.RESEND_TOO_SOON.getHttpStatus(), apiError);
+                }
+                return ResponseBuilder.error(ErrorCode.RESEND_TOO_SOON);
+            }
+
+            // 手机号归属地不允许使用
+            if ("illegalPhoneNumber".equals(result.getErrorCode())) {
+                return ResponseBuilder.error(ErrorCode.ILLEGAL_PHONE_NUMBER);
+            }
+
+            // 其余失败，返回通用错误响应
             return ResponseBuilder.error(ErrorCode.SMS_SEND_FAILED, result.getErrorMessage());
         }
     }
@@ -199,11 +235,13 @@ public class TokenCodeResource {
     public Response getResendExpireJson(String reqBody) {
         try {
             JsonNode jsonObject = new ObjectMapper().readTree(reqBody);
-            return this.getResendExpire(jsonObject.get(PhoneConstants.FIELD_AREA_CODE).asText(),
-                    jsonObject.get(PhoneConstants.FIELD_PHONE_NUMBER).asText());
+            // 使用path(...).asText(null)安全取值，避免字段缺失时NPE
+            String areaCode = jsonObject.path(PhoneConstants.FIELD_AREA_CODE).asText(null);
+            String phoneNumberStr = jsonObject.path(PhoneConstants.FIELD_PHONE_NUMBER).asText(null);
+            return this.getResendExpire(areaCode, phoneNumberStr);
         } catch (IOException e) {
             logger.error("解析JSON请求体失败", e);
-            return ResponseBuilder.serverError("请求格式错误");
+            return ResponseBuilder.error(ErrorCode.INVALID_REQUEST);
         }
     }
 

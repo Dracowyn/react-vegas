@@ -19,6 +19,7 @@ public enum ErrorCode {
     VERIFICATION_CODE_EXPIRED(400, "验证码已过期"),
     CAPTCHA_REQUIRED(400, "人机验证未完成"),
     CAPTCHA_INVALID(400, "人机验证失败"),
+    INVALID_REQUEST(400, "请求格式错误"),
     AREA_NOT_SUPPORTED(403, "该地区暂不支持"),
     USER_NOT_FOUND(404, "用户不存在"),
     AUTHENTICATION_REQUIRED(401, "需要登录"),
@@ -26,6 +27,7 @@ public enum ErrorCode {
     PHONE_UNSET_NOT_ALLOWED(403, "不允许取消绑定手机号"),
     TOKEN_NOT_FOUND(404, "验证码不存在或已失效"),
     RESEND_TOO_SOON(429, "请求过于频繁，请稍后再试"),
+    SMS_SEND_LIMIT_EXCEEDED(429, "短信请求过于频繁，请稍后再试"),
     
     // 服务器错误 (5xx)
     SMS_SEND_FAILED(500, "短信发送失败"),

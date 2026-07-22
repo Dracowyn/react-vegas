@@ -128,8 +128,9 @@ public class PhoneMessageServiceImpl implements PhoneMessageService {
             return result;
         }
 
-        // 移除旧的短信验证码
-        getTokenCodeService().removeCode(phoneNumber, type);
+        // 注意：发送前不删除旧验证码记录——最近1小时的记录要留给 isAbusing 做频控计数
+        // （此前这里的 removeCode 导致表中至多1行，一小时防滥用上限永远不会触发）。
+        // 旧记录由 persistCode 清理1小时前的部分；currentProcess 按 createdAt 取最新，旧验证码不会再被接受。
 
         // 创建事件构建器来记录短信发送详细事件
         EventBuilder eventBuilder = new EventBuilder(session.getContext().getRealm(), session, session.getContext().getConnection())
