@@ -98,6 +98,17 @@ spi-phone-provider-config-location-appcode=你的APPCODE
 spi-phone-provider-config-location-black-list=\u865a\u62df
 ```
 
+#### 6. 腾讯云验证码容灾票据配置（可选）
+
+腾讯云验证码前端 SDK 加载失败时会在本地生成无法通过腾讯云校验的"容灾票据"（`trerror_`/`terror_`前缀），后端识别到后按下面的开关决定放行还是拒绝，默认放行以保证可用性：
+
+```properties
+# 是否放行前端生成的容灾票据（默认true放行；安全敏感场景建议显式设为false）
+spi-captcha-service-tencent-allow-disaster-ticket=false
+```
+
+> 该开关是"可用性 vs 安全性"的取舍：设为`true`（默认）时，攻击者可自行构造符合前缀规则的字符串绕过人机验证，需结合短信侧频控（见[API_MIGRATION_GUIDE.md](./API_MIGRATION_GUIDE.md)中的安全行为变更）综合评估风险。
+
 ### 配置认证流程
 
 #### 手机短信OTP认证
@@ -327,9 +338,11 @@ GET /realms/{realmName}/geetest/code
 {
   "type": "geetest",
   "geetestId": "your_geetest_id",
-  "success": 1
+  "captchaAppId": "your_geetest_id"
 }
 ```
+
+> 响应中不含 `success` 字段（`CaptchaConfigResponse` 未保留该历史兼容字段）。
 
 #### 获取腾讯云验证码配置
 
@@ -373,10 +386,15 @@ grant_type=password&phone_number=$PHONE_NUMBER&code=$VERIFICATION_CODE&client_id
 | AUTHENTICATION_REQUIRED    | 401     | 需要登录         |
 | EMAIL_NOT_VERIFIED         | 400     | 邮箱未验证        |
 | PHONE_UNSET_NOT_ALLOWED    | 403     | 不允许取消绑定手机号   |
+| RESEND_TOO_SOON            | 429     | 重发冷却中，未到可重发时间（响应体`details.resendExpires`携带可重发的epoch毫秒时间戳） |
+| SMS_SEND_LIMIT_EXCEEDED    | 429     | 同一手机号一小时内发送次数超限（与上面的重发冷却是两种独立限流） |
+| INVALID_REQUEST            | 400     | JSON请求体解析失败   |
 | SMS_SEND_FAILED            | 500     | 短信发送失败       |
 | LOCATION_CHECK_FAILED      | 500     | 归属地检测失败      |
 | ILLEGAL_PHONE_NUMBER       | 403     | 该手机号归属地不允许使用 |
 | INTERNAL_ERROR             | 500     | 服务器内部错误      |
+
+> `VERIFICATION_CODE_INVALID`（验证码不匹配）与 `VERIFICATION_CODE_EXPIRED`（验证码过期/未发起/因连续输错5次被作废）在"验证并绑定手机号"接口中是两种不同语义的错误；完整的错误码变更说明、`resendExpires`响应示例与验证码防爆破、腾讯云验证码容灾票据等安全行为变更详见 [API_MIGRATION_GUIDE.md](./API_MIGRATION_GUIDE.md)。
 
 ### 版本更新说明
 
@@ -387,6 +405,9 @@ grant_type=password&phone_number=$PHONE_NUMBER&code=$VERIFICATION_CODE&client_id
 - ✅ 持久层由 `java.util.Date` 迁移到 `java.time.LocalDateTime`，移除弃用的 `@Temporal`
 - ✅ 移除 `CaptchaConfigResponse` 的历史兼容字段，统一返回 `captchaAppId`
 - 🔒 修复验证码明文被写入 info 日志与 Keycloak 事件详情的安全问题
+- 🔒 验证码新增防爆破机制：同一验证码连续校验失败达5次即自动作废，须重新发送（数据库自动迁移新增`ATTEMPTS`列，随插件启动执行，无需人工介入）
+- 🔒 验证码比对改为常量时间比较（`MessageDigest.isEqual`），避免时序侧信道
+- 🛡️ 腾讯云验证码新增前端"容灾票据"识别与 `allowDisasterTicket` 开关，详见上文配置说明与 [API_MIGRATION_GUIDE.md](./API_MIGRATION_GUIDE.md)
 - 🐞 修复凭据数据（credentialData）手工拼接 JSON 导致漏写 `areaCode`、结构错误的问题
 - 🐞 修复腾讯云 `captchaType` 被硬编码 `9` 覆盖、配置项不生效的问题
 - 🧵 修复区号缓存、极验服务状态、`JsonUtils` 的线程安全问题
